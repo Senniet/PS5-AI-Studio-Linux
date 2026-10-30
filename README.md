@@ -31,9 +31,9 @@ On Ubuntu 24.04/26.04 or a compatible Debian-based distribution:
 ```bash
 git clone https://github.com/Senniet/PS5-AI-Studio-Linux.git
 cd PS5-AI-Studio-Linux
-./scripts/check-linux-host.sh
-sudo ./scripts/bootstrap-ubuntu.sh
-./scripts/detect-gpu.sh
+bash scripts/check-linux-host.sh
+sudo bash scripts/bootstrap-ubuntu.sh
+bash scripts/detect-gpu.sh
 ```
 
 The bootstrap installs build tools and Vulkan development/runtime utilities. It does not download model weights, compile engines, change GPU drivers, or modify system services.
