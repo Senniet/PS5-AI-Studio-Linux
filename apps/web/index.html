@@ -13,6 +13,7 @@
       <div class="brand"><div class="brand-mark">AI</div><div><strong>AI Studio</strong><span>Linux edition</span></div></div>
       <div class="nav-label">WORKSPACE</div>
       <button class="nav-item active" data-view="overview"><span class="nav-icon">◫</span> Overzicht</button>
+      <button class="nav-item" data-view="chat"><span class="nav-icon">▤</span> Chat</button>
       <button class="nav-item" data-view="models"><span class="nav-icon">◈</span> Modellen</button>
       <button class="nav-item" data-view="diagnostics"><span class="nav-icon">⌁</span> Diagnostiek</button>
       <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span> Instellingen</button>
@@ -37,6 +38,15 @@
         </div>
         <div class="notice"><span>ⓘ</span><div><strong>Veilige lokale modus</strong><p>Deze eerste versie luistert alleen op localhost. LAN-toegang en modelbeheer worden pas toegevoegd met authenticatie en padbeveiliging.</p></div></div>
       </section>
+      <section id="view-chat" class="view">
+        <div class="chat-toolbar"><div><strong>Lokale chat</strong><span>Antwoorden via Ollama op deze PS5</span></div><label class="model-picker"><span>MODEL</span><select id="chat-model" aria-label="Selecteer model"></select></label></div>
+        <div id="chat-messages" class="chat-messages"><div class="chat-empty"><div class="empty-icon">✦</div><h3>Waar kan ik je mee helpen?</h3><p>Je berichten blijven op deze Linux-host en worden verwerkt door het geselecteerde lokale model.</p></div></div>
+        <form id="chat-form" class="chat-composer"><textarea id="chat-input" rows="2" placeholder="Stel een vraag…" maxlength="20000"></textarea><div class="composer-bottom"><span>Enter om te verzenden · Shift + Enter voor een nieuwe regel</span><button id="send-chat" type="submit">Versturen <span>↑</span></button></div></form>
+      </section>
+      <section id="view-models" class="view">
+        <div class="section-heading"><div><h3>Geïnstalleerde modellen</h3><p>Modellen die momenteel door Ollama worden aangeboden</p></div><button id="reload-models" class="secondary-button">Vernieuwen</button></div>
+        <div id="models-grid" class="models-grid"><div class="empty-state"><div class="empty-icon">◈</div><h3>Modellen laden…</h3></div></div>
+      </section>
       <section id="view-diagnostics" class="view">
         <div class="section-heading"><div><h3>Hardwarediagnostiek</h3><p>Gemeten waarden rechtstreeks uit Linux en AMDGPU</p></div></div>
         <div class="diagnostic-grid">
@@ -45,7 +55,6 @@
           <article class="panel"><h4>AMD GPU</h4><div class="detail-row"><span>Device</span><b id="diag-gpu">—</b></div><div class="detail-row"><span>Gereserveerd VRAM</span><b id="diag-vram">—</b></div><div class="detail-row"><span>GTT totaal</span><b id="diag-gtt">—</b></div><div class="detail-row"><span>GTT gebruikt</span><b id="diag-gtt-used">—</b></div><div class="detail-row"><span>TTM pages_limit</span><b id="diag-ttm">—</b></div><div class="detail-row"><span>TTM page_pool_size</span><b id="diag-pool">—</b></div></article>
         </div>
       </section>
-      <section id="view-models" class="view"><div class="empty-state"><div class="empty-icon">◈</div><h3>Modelbeheer komt hier</h3><p>Tekstmodellen en beeldmodellen krijgen gescheiden bibliotheken, downloads en geheugenschattingen. De huidige stap is eerst de veilige host- en runtimebasis.</p></div></section>
       <section id="view-settings" class="view"><div class="empty-state"><div class="empty-icon">⚙</div><h3>Instellingen worden voorbereid</h3><p>Netwerktoegang, opslaglocaties en runtimevoorkeuren worden pas ingeschakeld zodra validatie en toegangsbeveiliging klaar zijn.</p></div></section>
       <footer>PS5 AI Studio Linux <span>·</span> vroege ontwikkelversie</footer>
     </main>
