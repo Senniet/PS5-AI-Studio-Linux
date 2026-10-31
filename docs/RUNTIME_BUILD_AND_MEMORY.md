@@ -14,6 +14,7 @@ This document records the first real build and runtime validation on the PS5's s
 - AMDGPU reports 512 MiB VRAM and 7,218.6 MiB GTT.
 - Vulkan exposes about 7,730 MiB on the RADV device.
 - Current TTM `pages_limit`: 1,847,951 pages (4 KiB pages), matching the 7,218.6 MiB GTT.
+- Running kernel config has `CONFIG_DRM_AMDGPU_USERPTR=y`, `CONFIG_HMM_MIRROR=y`, `CONFIG_ZONE_DEVICE=y`, `CONFIG_MEMORY_HOTPLUG=y` and `CONFIG_ARCH_ENABLE_MEMORY_HOTPLUG=y`.
 
 The Vulkan heap is not extra physical memory. This is a unified-memory APU: Linux RAM, GTT allocations and VRAM allocations ultimately compete for the same physical memory budget.
 
