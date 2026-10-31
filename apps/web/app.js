@@ -80,21 +80,37 @@ async function loadModels() {
     if (!models.length) {
       const empty = document.createElement("div");
       empty.className = "empty-state";
-      empty.textContent = "Geen Ollama-modellen gevonden.";
+      empty.textContent = "Geen Ollama-modellen gevonden. Download hierboven een model.";
       grid.append(empty);
       return;
     }
     for (const model of models) {
       const card = document.createElement("article");
       card.className = "model-card";
+      const head = document.createElement("div");
+      head.className = "model-card-head";
       const title = document.createElement("strong");
       title.textContent = model.name;
+      const state = document.createElement("span");
+      state.className = `model-running ${model.running ? "is-running" : ""}`;
+      state.textContent = model.running ? "In gebruik" : "Op schijf";
+      head.append(title, state);
       const meta = document.createElement("p");
       meta.textContent = `${model.parameters} parameters · ${model.quantization} · ${fmt(model.size)}`;
+      const footer = document.createElement("div");
+      footer.className = "model-card-footer";
       const family = document.createElement("span");
       family.className = "model-family";
       family.textContent = model.family;
-      card.append(title, meta, family);
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "delete-model";
+      remove.textContent = "Verwijderen";
+      remove.disabled = model.running;
+      remove.title = model.running ? "Stop het model eerst in Ollama" : "Verwijder dit model van de schijf";
+      remove.addEventListener("click", () => deleteModel(model.name));
+      footer.append(family, remove);
+      card.append(head, meta, footer);
       grid.append(card);
     }
   } catch (error) {
@@ -103,6 +119,89 @@ async function loadModels() {
     message.className = "empty-state";
     message.textContent = `Modellen niet beschikbaar: ${error.message}`;
     grid.append(message);
+  }
+}
+let pullController = null;
+function setPullProgress(status, percent, size) {
+  $("pull-progress-wrap").hidden = false;
+  $("pull-status").textContent = status;
+  $("pull-percent").textContent = percent == null ? "—" : `${Math.round(percent)}%`;
+  $("pull-progress").value = percent ?? 0;
+  $("pull-size").textContent = size || " ";
+}
+async function pullModel(event) {
+  event.preventDefault();
+  if (pullController) return;
+  const name = $("model-name").value.trim();
+  if (!name) return;
+  pullController = new AbortController();
+  $("pull-model").disabled = true;
+  $("cancel-pull").hidden = false;
+  $("model-name").disabled = true;
+  setPullProgress("Download starten…", 0, "Ollama kan een onderbroken download later hervatten.");
+  try {
+    const response = await fetch("/api/models/pull", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+      signal: pullController.signal
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `HTTP ${response.status}`);
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const item = JSON.parse(line);
+        const percent = item.total > 0 ? item.completed / item.total * 100 : null;
+        const size = item.total > 0 ? `${fmt(item.completed)} / ${fmt(item.total)}` : "";
+        setPullProgress(item.status || "Downloaden…", percent, size);
+        if (item.error) throw new Error(item.error);
+      }
+    }
+    if (buffer.trim()) {
+      const item = JSON.parse(buffer);
+      if (item.error) throw new Error(item.error);
+      setPullProgress(item.status || "Download voltooid", 100, "Model is beschikbaar.");
+    }
+    $("model-name").value = "";
+    setPullProgress("Download voltooid", 100, "Model staat in je lokale bibliotheek.");
+    await loadModels();
+  } catch (error) {
+    if (error.name === "AbortError") {
+      setPullProgress("Download onderbroken", null, "Ollama bewaart voortgang en hervat bij een volgende poging.");
+    } else {
+      setPullProgress(`Download mislukt: ${error.message}`, null, "");
+    }
+  } finally {
+    pullController = null;
+    $("pull-model").disabled = false;
+    $("cancel-pull").hidden = true;
+    $("model-name").disabled = false;
+  }
+}
+async function deleteModel(name) {
+  if (!confirm(`Weet je zeker dat je model "${name}" volledig van de PS5 wilt verwijderen? Dit verwijdert de lokale modelbestanden.`)) return;
+  try {
+    const response = await fetch("/api/models", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    await loadModels();
+  } catch (error) {
+    alert(`Model verwijderen is niet gelukt: ${error.message}`);
   }
 }
 function renderMessages() {
@@ -175,6 +274,8 @@ document.querySelectorAll(".nav-item").forEach((button) => button.addEventListen
 }));
 $("refresh").addEventListener("click", refresh);
 $("reload-models").addEventListener("click", loadModels);
+$("model-pull-form").addEventListener("submit", pullModel);
+$("cancel-pull").addEventListener("click", () => pullController?.abort());
 $("chat-form").addEventListener("submit", sendMessage);
 $("chat-input").addEventListener("keydown", (event) => {
   if (event.key === "Enter" && !event.shiftKey) {
