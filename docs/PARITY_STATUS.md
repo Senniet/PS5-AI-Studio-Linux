@@ -27,7 +27,7 @@ This is a functional parity tracker, not a claim that the two platforms share co
 | Image progress and interrupt | Wired; hardware validation pending | SD API progress and interrupt endpoints |
 | Image gallery | Implemented | Browse, reuse as source and delete |
 | ControlNet inference | CPU generation validated; Vulkan crashes on this PS5 | App forces CPU backend for conditioned sessions |
-| IP-Adapter | Wired; validation pending | Paired IP-Adapter and CLIP Vision; conditioned sessions currently use CPU |
+| IP-Adapter | CPU generation validated | SD1.5 classic adapter + FP16 CLIP Vision H installed; conditioned sessions use CPU fallback |
 | Upscaling workflow | Validated | RealESRGAN_x4plus on Vulkan; gallery action, status and cancel |
 | Hardware dashboard | Implemented | CPU, RAM/swap, GPU, GTT/TTM, temperature and disk |
 | Runtime exclusivity | Implemented | GPU-heavy runtimes are stopped before switching |
@@ -48,7 +48,7 @@ This is a functional parity tracker, not a claim that the two platforms share co
 ## Next parity milestones
 
 1. Validate additional SDXL/SD1.5 checkpoints and refine high-resolution img2img/inpainting workflows.
-2. Validate ControlNet and IP-Adapter with compatible conditioning assets; improve upscale options and batch reliability.
+2. Improve conditioned-generation performance and test additional ControlNet/IP-Adapter variants; improve upscale options and batch reliability.
 3. Add model conversion/quantization helpers for memory-constrained checkpoints.
 4. Expand prompt presets into reusable end-to-end image workflow templates.
 5. Add richer chat/tool workflows and model-specific vision capability detection.
@@ -56,13 +56,13 @@ This is a functional parity tracker, not a claim that the two platforms share co
 ### v0.4 additions
 
 - ControlNet model discovery, download category, runtime loading and reference-image/strength controls: end-to-end validated on CPU; Vulkan ControlNet crashes on this PS5, so conditioned image sessions automatically use CPU.
-- IP-Adapter + CLIP Vision discovery, download categories, paired runtime loading and reference-image/strength controls: wired; compatible assets and end-to-end conditioning validation still pending. Conditioning sessions use CPU for compatibility.
+- IP-Adapter + CLIP Vision discovery, download categories, paired runtime loading and reference-image/strength controls: end-to-end SD1.5 CPU generation validated with the classic adapter and FP16 CLIP Vision H. Conditioning sessions use CPU for compatibility.
 - Multi-LoRA selection with shared multiplier: implemented.
 - ESRGAN upscale job using sd-cli, with status, logs and cancellation: validated on Vulkan with RealESRGAN_x4plus.
 - Generation prompt/settings sidecars and gallery prompt restoration: implemented.
 - Combined checkpoint/conditioning memory planner, server-side load preflight and built-in/custom prompt presets: implemented.
 - Batch generation (1–4 images) with batch-aware prompt presets and gallery metadata: implemented.
 - SD 1.5 txt2img and img2img/inpainting: tested on PS5 Vulkan; 512×512 smoke generations completed and saved.
-- Native asynchronous ControlNet/IP-Adapter job path, job progress, preview metadata and cancellation: implemented. ControlNet end-to-end generation passed on CPU; Vulkan ControlNet crashes in the SD1.5 UNet path on this PS5, so conditioned jobs automatically use the CPU backend for reliability.
+- Native asynchronous ControlNet/IP-Adapter job path, job progress, preview metadata and cancellation: implemented. ControlNet and IP-Adapter end-to-end generation passed on CPU individually and together; the IP-Adapter-only 512×512 one-step smoke job completed in 54.3 seconds and the combined conditioning job completed in 78.7 seconds. Vulkan conditioning crashes in the SD1.5 UNet path on this PS5, so conditioned jobs automatically use the CPU backend for reliability.
 - Uploaded inpainting masks are normalized to grayscale and source dimensions before generation; optional mask inversion is available.
 - Marketplace excludes `.pt` and `.pth` pickle-based image model downloads; `.onnx` support added to the download allow-list.

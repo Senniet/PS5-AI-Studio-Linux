@@ -70,7 +70,7 @@ const server=http.createServer(async(req,res)=>{
  if(!auth(req))return send(res,401,{error:"Authenticatie vereist"},undefined,{"WWW-Authenticate":'Basic realm="PS5 AI Studio Linux"'});
  if(!validOrigin(req))return send(res,403,{error:"Cross-origin request geweigerd"});
  try{const u=new URL(req.url,"http://localhost"),p=u.pathname;
- if(req.method==="GET"&&p==="/api/health")return send(res,200,{ok:true,version:"0.5.1"});
+ if(req.method==="GET"&&p==="/api/health")return send(res,200,{ok:true,version:"0.5.2"});
  if(req.method==="GET"&&p==="/api/conversations"){const list=[];for(const n of fs.readdirSync(CONV).filter(x=>x.endsWith(".json"))){try{const c=JSON.parse(fs.readFileSync(path.join(CONV,n),"utf8"));list.push({id:c.id,title:c.title,updatedAt:c.updatedAt||c.createdAt,messages:(c.messages||[]).length});}catch{}}return send(res,200,{conversations:list.sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt)))});}
  if(req.method==="POST"&&p==="/api/conversations"){const b=await body(req,4000000);if(!/^[a-f0-9-]{16,64}$/i.test(b.id)||!Array.isArray(b.messages)||b.messages.length>500)return send(res,400,{error:"Ongeldig gesprek"});const c={id:b.id,title:String(b.title||"Nieuw gesprek").slice(0,120),createdAt:b.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString(),messages:b.messages.map(m=>({role:m.role==="assistant"?"assistant":"user",content:String(m.content||"").slice(0,50000)}))};await fsp.writeFile(safe(CONV,c.id+".json"),JSON.stringify(c,null,2),{mode:0o600});return send(res,200,{ok:true,conversation:c});}
  if(req.method==="GET"&&p.startsWith("/api/conversations/")){const id=p.slice(19);if(!/^[a-f0-9-]{16,64}$/i.test(id))return send(res,400,{error:"Ongeldig gesprek"});try{return send(res,200,JSON.parse(await fsp.readFile(safe(CONV,id+".json"),"utf8")));}catch{return send(res,404,{error:"Gesprek niet gevonden"});}}
@@ -120,5 +120,5 @@ const server=http.createServer(async(req,res)=>{
  return send(res,405,{error:"Method not allowed"});
  }catch(e){log(path.join(LOG,"app.log"),e.stack||e.message);if(!res.headersSent)send(res,e.status||500,{error:e.message});else res.destroy();}
 });
-server.requestTimeout=0;server.headersTimeout=20000;server.listen(PORT,HOST,()=>{log(path.join(LOG,"app.log"),"Listening on "+HOST+":"+PORT);console.log("PS5 AI Studio Linux v0.5.1 listening on "+HOST+":"+PORT);if(settings.autoLoad&&settings.defaultModel)loadText({model:settings.defaultModel}).catch(e=>log(path.join(LOG,"app.log"),e.message));runQueue();});
+server.requestTimeout=0;server.headersTimeout=20000;server.listen(PORT,HOST,()=>{log(path.join(LOG,"app.log"),"Listening on "+HOST+":"+PORT);console.log("PS5 AI Studio Linux v0.5.2 listening on "+HOST+":"+PORT);if(settings.autoLoad&&settings.defaultModel)loadText({model:settings.defaultModel}).catch(e=>log(path.join(LOG,"app.log"),e.message));runQueue();});
 process.on("SIGTERM",()=>{stop(runtimes.text).finally(()=>stop(runtimes.image)).finally(()=>stop(runtimes.upscale)).finally(()=>server.close());});
