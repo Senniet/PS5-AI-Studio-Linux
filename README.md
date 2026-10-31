@@ -6,7 +6,7 @@ A standalone Linux edition of PS5 AI Studio for Ubuntu running directly on PS5 h
 
 The Linux host has been validated on Ubuntu 26.04.1 with kernel 7.3.0-PinkSoup, AMD Oberon/RADV Vulkan, llama.cpp Vulkan and stable-diffusion.cpp Vulkan builds. The first browser interface now includes a live hardware dashboard, Ollama model list and local non-streaming chat using Ollama. A Qwen3 8B Q4_K_M chat smoke test completed with full GPU offload.
 
-The web service listens on all IPv4 interfaces at port 8787 and is protected by HTTP Basic Authentication. Use it only on a trusted LAN: HTTP is not encrypted, and no router port forwarding should be configured. It now supports streamed Ollama model downloads (with resumable cancellation), safe deletion of stopped models, model listing and local chat. Standalone llama.cpp and image-generation management remain in progress.
+The web service listens on all IPv4 interfaces at port 8787 and is protected by HTTP Basic Authentication. Use it only on a trusted LAN: HTTP is not encrypted, and no router port forwarding should be configured. It now supports streamed Ollama model downloads (with resumable cancellation), safe deletion of stopped models, model listing and local chat. A separate image-checkpoint library scanner is now present; actual image generation awaits a compatible checkpoint on the PS5. Standalone llama.cpp management remains in progress.
 
 ## Platform boundaries
 
@@ -35,7 +35,7 @@ Open http://192.168.2.210:8787 from a device on the home LAN (or use the PS5's c
 
 ```text
 apps/server/                 Linux diagnostics/API service
-apps/web/                    Browser dashboard, model library and local chat
+apps/web/                    Browser dashboard, text model library, image checkpoint scanner and local chat
 runtime/text/                llama.cpp integration (planned)
 runtime/image/               stable-diffusion.cpp integration (planned)
 platform/linux/              XDG paths, process control and host probes (planned)
