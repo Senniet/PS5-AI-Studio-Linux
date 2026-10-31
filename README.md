@@ -6,7 +6,7 @@ A standalone Linux edition of PS5 AI Studio for Ubuntu running directly on PS5 h
 
 The Linux host has been validated on Ubuntu 26.04.1 with kernel 7.3.0-PinkSoup, AMD Oberon/RADV Vulkan, llama.cpp Vulkan and stable-diffusion.cpp Vulkan builds. The first browser interface now includes a live hardware dashboard, Ollama model list and local non-streaming chat using Ollama. A Qwen3 8B Q4_K_M chat smoke test completed with full GPU offload.
 
-The web service is intentionally loopback-only. It does not yet manage downloads, start/stop standalone engines, generate images or expose the host to the LAN.
+The web service listens on all IPv4 interfaces at port 8787 and is protected by HTTP Basic Authentication. Use it only on a trusted LAN: HTTP is not encrypted, and no router port forwarding should be configured. It does not yet manage downloads, start/stop standalone engines or generate images.
 
 ## Platform boundaries
 
@@ -29,7 +29,7 @@ npm run check
 npm start
 ```
 
-Open http://127.0.0.1:8787 on the Linux desktop. To install the user service, copy `packaging/systemd/ps5-ai-studio-linux.service` to `~/.config/systemd/user/`, then run `systemctl --user daemon-reload && systemctl --user enable --now ps5-ai-studio-linux.service`.
+Open http://192.168.2.210:8787 from a device on the home LAN (or use the PS5's current LAN address). The browser asks for the credentials stored in `~/.config/ps5-ai-studio-linux/auth.env`. To install the user service, copy `packaging/systemd/ps5-ai-studio-linux.service` to `~/.config/systemd/user/`, then run `systemctl --user daemon-reload && systemctl --user enable --now ps5-ai-studio-linux.service`.
 
 ## Project layout
 
@@ -47,7 +47,7 @@ packaging/systemd/            user service template
 
 ## Security
 
-The first dashboard binds only to 127.0.0.1. It exposes read-only diagnostics, installed-model metadata and a constrained local chat proxy; it does not expose arbitrary shell execution, unrestricted file access, model downloads or process control. LAN access must remain disabled until authenticated sessions, API authorization and path validation are implemented.
+The dashboard binds to 0.0.0.0:8787 and requires Basic Authentication for all routes. It exposes diagnostics, installed-model metadata and a constrained local chat proxy; it does not expose arbitrary shell execution, unrestricted file access, model downloads or process control. HTTP credentials and chat traffic are not encrypted: use a trusted private LAN only, never forward the port from the internet, and use a VPN or authenticated TLS reverse proxy for remote access.
 
 ## License and attribution
 
