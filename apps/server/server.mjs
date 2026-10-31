@@ -9,6 +9,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../web"
 const HOST = process.env.HOST || "0.0.0.0";
 const PORT = Number(process.env.PORT || 8787);
 const OLLAMA = "http://127.0.0.1:11434";
+const IMAGE_ROOT = path.join(process.env.XDG_DATA_HOME || path.join(os.homedir(), ".local/share"), "ps5-ai-studio", "models", "image");
+const IMAGE_CHECKPOINTS = path.join(IMAGE_ROOT, "checkpoints");
 const WEB_USER = process.env.WEB_USER || "admin";
 const WEB_PASSWORD = process.env.WEB_PASSWORD || "";
 if (!WEB_PASSWORD || WEB_PASSWORD.length < 24) {
@@ -128,6 +130,19 @@ function validModelName(name) {
     /^[A-Za-z0-9][A-Za-z0-9._/-]*(?::[A-Za-z0-9][A-Za-z0-9._-]*)?$/.test(name) &&
     !name.includes("..") && !name.includes("//");
 }
+function scanImageModels() {
+  const allowed = new Set([".safetensors", ".ckpt", ".gguf"]);
+  const models = [];
+  try {
+    for (const entry of fs.readdirSync(IMAGE_CHECKPOINTS, { withFileTypes: true })) {
+      if (!entry.isFile() || !allowed.has(path.extname(entry.name).toLowerCase())) continue;
+      const fullPath = path.join(IMAGE_CHECKPOINTS, entry.name);
+      const stat = fs.statSync(fullPath);
+      models.push({ name: entry.name, path: fullPath, size: stat.size, modified: stat.mtime.toISOString(), format: path.extname(entry.name).slice(1).toLowerCase() });
+    }
+  } catch {}
+  return models.sort((a, b) => a.name.localeCompare(b.name));
+}
 function send(res, status, body, type = "application/json; charset=utf-8", extraHeaders = {}) {
   res.writeHead(status, { "Content-Type": type, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "X-Frame-Options": "DENY", ...extraHeaders });
   res.end(type.startsWith("application/json") ? JSON.stringify(body) : body);
@@ -158,6 +173,9 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/models") {
       try { return send(res, 200, { models: await getModels() }); }
       catch (error) { return send(res, 503, { error: "Ollama is niet bereikbaar", detail: error.message }); }
+    }
+    if (req.method === "GET" && url.pathname === "/api/image/models") {
+      return send(res, 200, { directory: IMAGE_CHECKPOINTS, models: scanImageModels() });
     }
     if (req.method === "POST" && url.pathname === "/api/models/pull") {
       const body = await readJson(req, 4096);
