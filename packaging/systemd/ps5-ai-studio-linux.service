@@ -6,7 +6,9 @@ After=network.target
 Type=simple
 WorkingDirectory=%h/PS5-AI-Studio-Linux
 ExecStart=/usr/bin/node %h/PS5-AI-Studio-Linux/apps/server/server.mjs
+Environment=HOST=0.0.0.0
 Environment=PORT=8787
+EnvironmentFile=%h/.config/ps5-ai-studio-linux/auth.env
 Restart=on-failure
 RestartSec=3
 
