@@ -14,7 +14,8 @@
       <div class="nav-label">WORKSPACE</div>
       <button class="nav-item active" data-view="overview"><span class="nav-icon">◫</span> Overzicht</button>
       <button class="nav-item" data-view="chat"><span class="nav-icon">▤</span> Chat</button>
-      <button class="nav-item" data-view="models"><span class="nav-icon">◈</span> Modellen</button>
+      <button class="nav-item" data-view="models"><span class="nav-icon">◈</span> Tekstmodellen</button>
+      <button class="nav-item" data-view="images"><span class="nav-icon">✳</span> Beeldmodellen</button>
       <button class="nav-item" data-view="diagnostics"><span class="nav-icon">⌁</span> Diagnostiek</button>
       <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span> Instellingen</button>
       <div class="sidebar-bottom"><span class="status-dot"></span><span>Linux host verbonden</span><small id="last-update">Laden…</small></div>
@@ -51,6 +52,12 @@
           <div id="pull-progress-wrap" class="pull-progress-wrap" hidden><div class="pull-progress-head"><span id="pull-status">Download voorbereiden…</span><span id="pull-percent">0%</span></div><progress id="pull-progress" max="100" value="0"></progress><div class="pull-progress-foot"><span id="pull-size">—</span><button id="cancel-pull" class="text-button" type="button" hidden>Annuleren</button></div></div>
         </form>
         <div id="models-grid" class="models-grid"><div class="empty-state"><div class="empty-icon">◈</div><h3>Modellen laden…</h3></div></div>
+      </section>
+      <section id="view-images" class="view">
+        <div class="section-heading"><div><h3>Beeldmodellen</h3><p>Lokale checkpoints voor stable-diffusion.cpp</p></div><button id="reload-image-models" class="secondary-button">Vernieuwen</button></div>
+        <div class="image-model-location"><span>CHECKPOINTMAP</span><code id="image-model-directory">Laden…</code></div>
+        <div id="image-models-grid" class="models-grid"><div class="empty-state"><div class="empty-icon">✳</div><h3>Beeldmodellen zoeken…</h3></div></div>
+        <div class="notice image-note"><span>ⓘ</span><div><strong>Model nog niet gevonden?</strong><p>Plaats een volledig SDXL-checkpoint (.safetensors of .ckpt) in de checkpointmap hierboven. VAE, CLIP en LoRA-bestanden krijgen aparte mappen. De Linux-installatie bevat op dit moment nog geen beeldcheckpoint, dus beeldgeneratie kan nog niet getest worden.</p></div></div>
       </section>
       <section id="view-diagnostics" class="view">
         <div class="section-heading"><div><h3>Hardwarediagnostiek</h3><p>Gemeten waarden rechtstreeks uit Linux en AMDGPU</p></div></div>
