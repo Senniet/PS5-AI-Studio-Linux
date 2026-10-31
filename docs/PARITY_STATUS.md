@@ -26,8 +26,8 @@ This is a functional parity tracker, not a claim that the two platforms share co
 | Inpainting | Validated | SD1.5 masked img2img with uploaded mask; brush mask wired |
 | Image progress and interrupt | Wired; hardware validation pending | SD API progress and interrupt endpoints |
 | Image gallery | Implemented | Browse, reuse as source and delete |
-| ControlNet inference | Wired; hardware validation pending | Model selection at runtime, reference image and strength |
-| IP-Adapter | Wired; hardware validation pending | Paired IP-Adapter and CLIP Vision with reference image and strength |
+| ControlNet inference | CPU generation validated; Vulkan crashes on this PS5 | App forces CPU backend for conditioned sessions |
+| IP-Adapter | Wired; validation pending | Paired IP-Adapter and CLIP Vision; conditioned sessions currently use CPU |
 | Upscaling workflow | Validated | RealESRGAN_x4plus on Vulkan; gallery action, status and cancel |
 | Hardware dashboard | Implemented | CPU, RAM/swap, GPU, GTT/TTM, temperature and disk |
 | Runtime exclusivity | Implemented | GPU-heavy runtimes are stopped before switching |
@@ -55,13 +55,14 @@ This is a functional parity tracker, not a claim that the two platforms share co
 
 ### v0.4 additions
 
-- ControlNet model discovery, download category, runtime loading and reference-image/strength controls: wired; model-specific runtime validation pending.
-- IP-Adapter + CLIP Vision discovery, download categories, paired runtime loading and reference-image/strength controls: wired; model-specific runtime validation pending.
+- ControlNet model discovery, download category, runtime loading and reference-image/strength controls: end-to-end validated on CPU; Vulkan ControlNet crashes on this PS5, so conditioned image sessions automatically use CPU.
+- IP-Adapter + CLIP Vision discovery, download categories, paired runtime loading and reference-image/strength controls: wired; compatible assets and end-to-end conditioning validation still pending. Conditioning sessions use CPU for compatibility.
 - Multi-LoRA selection with shared multiplier: implemented.
 - ESRGAN upscale job using sd-cli, with status, logs and cancellation: validated on Vulkan with RealESRGAN_x4plus.
 - Generation prompt/settings sidecars and gallery prompt restoration: implemented.
 - Combined checkpoint/conditioning memory planner, server-side load preflight and built-in/custom prompt presets: implemented.
 - Batch generation (1–4 images) with batch-aware prompt presets and gallery metadata: implemented.
 - SD 1.5 txt2img and img2img/inpainting: tested on PS5 Vulkan; 512×512 smoke generations completed and saved.
-- Native asynchronous ControlNet/IP-Adapter job path, job progress, preview metadata and cancellation: implemented; ControlNet conditioning awaits GPU validation with the local SafeTensors FP16 asset.
+- Native asynchronous ControlNet/IP-Adapter job path, job progress, preview metadata and cancellation: implemented. ControlNet end-to-end generation passed on CPU; Vulkan ControlNet crashes in the SD1.5 UNet path on this PS5, so conditioned jobs automatically use the CPU backend for reliability.
 - Uploaded inpainting masks are normalized to grayscale and source dimensions before generation; optional mask inversion is available.
+- Marketplace excludes `.pt` and `.pth` pickle-based image model downloads; `.onnx` support added to the download allow-list.

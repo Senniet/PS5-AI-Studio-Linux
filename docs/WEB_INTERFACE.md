@@ -108,7 +108,7 @@ Generated images are written to ~/.local/share/ps5-ai-studio/outputs/images. The
 - GGUF header parser: validated against a synthetic GGUF header fixture; fixture removed afterward.
 - ESRGAN upscaling: tested end-to-end with RealESRGAN_x4plus on Vulkan; a 64×64 test image was enlarged to 256×256. Temporary test images were removed.
 - Stable Diffusion 1.5 checkpoint downloaded with SHA-256 validation; text-to-image and masked img2img/inpainting both passed on Vulkan. A 512×512 four-step txt2img run completed in about 4.4 seconds with Vulkan VAE decoding.
-- ControlNet and IP-Adapter conditioning remain wired but await compatible conditioning assets for hardware validation.
+- SD1.5 Canny ControlNet conditioning passed an end-to-end CPU generation test. Vulkan ControlNet crashes in the UNet path on this PS5, so conditioned sessions use CPU automatically. IP-Adapter remains unvalidated pending compatible assets.
 
 ## Advanced image workflows (v0.4)
 
@@ -120,7 +120,7 @@ Generated images are written to ~/.local/share/ps5-ai-studio/outputs/images. The
 
 New image model categories: ipadapter and clipvision. New API routes: GET /api/gallery/<filename>/metadata, POST /api/image/upscale, GET /api/image/upscale/status, and POST /api/image/upscale/cancel.
 
-ControlNet execution is wired to the native stable-diffusion.cpp job API and a SafeTensors FP16 SD1.5 Canny asset is installed, but end-to-end conditioning is not yet hardware-verified. IP-Adapter execution is wired but awaits compatible IP-Adapter and CLIP Vision assets. ESRGAN has passed a Vulkan smoke test.
+ControlNet execution is wired to the native stable-diffusion.cpp job API and a SafeTensors FP16 SD1.5 Canny asset is installed. On this PS5 Vulkan build, SD1.5 ControlNet jobs crash in the Vulkan UNet path even with ControlNet itself placed on CPU. The same model and request complete on the CPU backend. The app therefore automatically switches the entire diffusion runtime to CPU whenever ControlNet or IP-Adapter conditioning assets are selected; this is a compatibility fallback and is substantially slower. Standard unconditioned image generation continues to use the configured Vulkan backend. The model marketplace now excludes PyTorch pickle-based `.pt` and `.pth` downloads; prefer SafeTensors, GGUF and ONNX assets from trusted model publishers. IP-Adapter execution is wired but awaits compatible IP-Adapter and CLIP Vision assets. ESRGAN has passed a Vulkan smoke test.
 
 ## Image planning and prompt presets
 
