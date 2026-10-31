@@ -72,3 +72,7 @@ The systemd user service is ps5-ai-studio-linux.service. Restart it with systemc
 - Full-precision SDXL checkpoints may exceed the PS5's practical GTT budget. The image runtime uses auto-fit, CPU text-encoder/VAE placement and VAE tiling to reduce memory pressure; large checkpoints can still be slow or exceed available unified memory. The UI warns using a conservative estimate.
 - ControlNet and upscaler files can be catalogued/downloaded, but dedicated ControlNet and upscale workflows are not yet wired into the generation UI.
 - This edition is still under active development; runtime CLI options and backend API compatibility must be validated against the installed builds.
+
+### Advanced image workflows
+
+The Image Studio also includes optional ControlNet conditioning, IP-Adapter reference guidance (with a matching CLIP Vision encoder), multiple LoRAs, ESRGAN upscaling as a separate cancellable job, and prompt/settings sidecars for each generated image. The gallery can restore a prior prompt and generation setup. These paths are wired to stable-diffusion.cpp; actual generation with each conditioning model remains pending installation of compatible assets.

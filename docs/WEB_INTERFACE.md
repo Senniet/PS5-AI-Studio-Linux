@@ -107,3 +107,15 @@ Generated images are written to ~/.local/share/ps5-ai-studio/outputs/images. The
 - Ollama streaming chat: tested with qwen3:8b-16k; model unloaded after the test.
 - GGUF header parser: validated against a synthetic GGUF header fixture; fixture removed afterward.
 - Image generation itself: not yet tested because no local image checkpoint is installed.
+
+## Advanced image workflows (v0.4)
+
+- ControlNet assets are managed in the dedicated controlnet directory. Select a ControlNet checkpoint before loading the image runtime, then provide a matching control/reference image and strength.
+- IP-Adapter assets and their CLIP Vision encoder are managed separately. Both must be selected together when loading the image runtime. An IP-Adapter reference image and strength are supplied per generation.
+- Multiple LoRAs can be selected simultaneously; the current UI applies one shared multiplier to the selected LoRAs.
+- ESRGAN upscaling runs as a separate cancellable sd-cli job. The image runtime is stopped first to avoid competing for GTT. Results are saved to the image gallery.
+- Each new generated image receives a JSON sidecar with prompt, negative prompt, model, dimensions, sampler, scheduler, seed and conditioning strengths. Gallery entries can restore the saved prompt/settings; deleting an image also deletes its sidecar.
+
+New image model categories: ipadapter and clipvision. New API routes: GET /api/gallery/<filename>/metadata, POST /api/image/upscale, GET /api/image/upscale/status, and POST /api/image/upscale/cancel.
+
+ControlNet, IP-Adapter and ESRGAN execution are wired to the installed stable-diffusion.cpp interfaces but remain hardware-unverified until the corresponding model assets are downloaded and a real generation/edit is run.

@@ -51,3 +51,11 @@ This is a functional parity tracker, not a claim that the two platforms share co
 3. Add model conversion/quantization helpers for memory-constrained checkpoints.
 4. Add image generation presets, reusable prompt presets and workflow templates.
 5. Add richer chat/tool workflows and model-specific vision capability detection.
+
+### v0.4 additions
+
+- ControlNet model discovery, download category, runtime loading and reference-image/strength controls: wired; model-specific runtime validation pending.
+- IP-Adapter + CLIP Vision discovery, download categories, paired runtime loading and reference-image/strength controls: wired; model-specific runtime validation pending.
+- Multi-LoRA selection with shared multiplier: implemented.
+- ESRGAN upscale job using sd-cli, with status, logs and cancellation: wired; actual upscaling pending a local ESRGAN asset.
+- Generation prompt/settings sidecars and gallery prompt restoration: implemented.
