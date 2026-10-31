@@ -204,6 +204,49 @@ async function deleteModel(name) {
     alert(`Model verwijderen is niet gelukt: ${error.message}`);
   }
 }
+async function loadImageModels() {
+  const grid = $("image-models-grid");
+  try {
+    const response = await fetch("/api/image/models", { cache: "no-store" });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    $("image-model-directory").textContent = data.directory;
+    grid.replaceChildren();
+    if (!data.models?.length) {
+      const empty = document.createElement("div");
+      empty.className = "empty-state";
+      const icon = document.createElement("div");
+      icon.className = "empty-icon";
+      icon.textContent = "✳";
+      const title = document.createElement("h3");
+      title.textContent = "Nog geen beeldcheckpoint gevonden";
+      const text = document.createElement("p");
+      text.textContent = "Zet een SDXL .safetensors- of .ckpt-bestand in de checkpointmap om de image-engine te kunnen configureren.";
+      empty.append(icon, title, text);
+      grid.append(empty);
+      return;
+    }
+    for (const model of data.models) {
+      const card = document.createElement("article");
+      card.className = "model-card";
+      const title = document.createElement("strong");
+      title.textContent = model.name;
+      const meta = document.createElement("p");
+      meta.textContent = `${model.format.toUpperCase()} · ${fmt(model.size)} · gewijzigd ${new Date(model.modified).toLocaleDateString("nl-NL")}`;
+      const location = document.createElement("code");
+      location.className = "image-model-path";
+      location.textContent = model.path;
+      card.append(title, meta, location);
+      grid.append(card);
+    }
+  } catch (error) {
+    grid.replaceChildren();
+    const message = document.createElement("div");
+    message.className = "empty-state";
+    message.textContent = `Beeldmodellen niet beschikbaar: ${error.message}`;
+    grid.append(message);
+  }
+}
 function renderMessages() {
   const container = $("chat-messages");
   container.replaceChildren();
@@ -274,6 +317,7 @@ document.querySelectorAll(".nav-item").forEach((button) => button.addEventListen
 }));
 $("refresh").addEventListener("click", refresh);
 $("reload-models").addEventListener("click", loadModels);
+$("reload-image-models").addEventListener("click", loadImageModels);
 $("model-pull-form").addEventListener("submit", pullModel);
 $("cancel-pull").addEventListener("click", () => pullController?.abort());
 $("chat-form").addEventListener("submit", sendMessage);
@@ -285,4 +329,5 @@ $("chat-input").addEventListener("keydown", (event) => {
 });
 refresh();
 loadModels();
+loadImageModels();
 setInterval(refresh, 60000);
