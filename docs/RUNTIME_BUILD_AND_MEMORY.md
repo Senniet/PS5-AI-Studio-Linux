@@ -5,7 +5,7 @@ This document records the first real build and runtime validation on the PS5's s
 ## Validated host
 
 - Ubuntu 26.04.1 LTS
-- Linux kernel 7.1.7
+- Linux kernel 7.3.0-PinkSoup
 - AMD Custom Zen 2 / Oberon APU, PCI ID `1002:13fb`
 - Mesa RADV 26.2.5 (Kisak Mesa PPA), Vulkan 1.4
 - Vulkan device: `AMD Custom Zen 2 (Oberon) (RADV GFX1013)`
@@ -13,7 +13,7 @@ This document records the first real build and runtime validation on the PS5's s
 - PS5 boot `vram.txt`: `0x20000000` (512 MiB reserved VRAM)
 - AMDGPU reports 512 MiB VRAM and 7,218.6 MiB GTT.
 - Vulkan exposes about 7,730 MiB on the RADV device.
-- Current TTM `pages_limit`: 1,847,951 pages (4 KiB pages), matching the 7,218.6 MiB GTT.
+- Current TTM `pages_limit`: 1,848,125 pages (4 KiB pages), matching the 7,218.6 MiB GTT.
 - Running kernel config has `CONFIG_DRM_AMDGPU_USERPTR=y`, `CONFIG_HMM_MIRROR=y`, `CONFIG_ZONE_DEVICE=y`, `CONFIG_MEMORY_HOTPLUG=y` and `CONFIG_ARCH_ENABLE_MEMORY_HOTPLUG=y`.
 
 The Vulkan heap is not extra physical memory. This is a unified-memory APU: Linux RAM, GTT allocations and VRAM allocations ultimately compete for the same physical memory budget.
@@ -108,7 +108,7 @@ Current state:
 
 - `/boot/efi/vram.txt` contains `0x20000000` (512 MiB).
 - Current kernel command line does not contain `mem=` or `memmap=`.
-- `/sys/module/ttm/parameters/pages_limit` is `1847951`.
+- `/sys/module/ttm/parameters/pages_limit` is `1848125`.
 - The AMDGPU driver logs `7218M of GTT memory ready`.
 
 The AMDGPU initialization code derives the userspace GTT size from `ttm_tt_pages_limit()`. The legacy `amdgpu.gttsize` module parameter is deprecated in current kernel documentation/source; prefer the TTM limit.
@@ -130,6 +130,10 @@ This is 10 GiB in 4 KiB pages. It should be tested with a backup of `/boot/efi/c
 This parameter changes the GTT addressable budget; it does not reserve 10 GiB at boot. Actual allocations still consume shared physical RAM and can trigger memory pressure/OOM. The APU driver also caps GTT at physical system RAM. Do not set it to the full 16 GiB blindly, and do not add `mem=` or `memmap=` to this PS5 boot command line.
 
 Start with 10 GiB rather than 12 GiB. Keep the current 512 MiB `vram.txt` reservation for the first comparison; changing both knobs at once would make results harder to interpret.
+
+## Latest live verification — 2026-10-31
+
+After the move to kernel 7.3.0-PinkSoup, the active TTM values were rechecked directly on the PS5: `pages_limit=1848125`, `page_pool_size=0`, `dma32_pages_limit=524288`. AMDGPU reports 512 MiB VRAM and 7,219 MiB GTT. These are the active values; no boot-memory setting has been changed. The read-only web dashboard also reports these values from sysfs.
 
 ## Notes
 
