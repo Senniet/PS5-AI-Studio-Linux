@@ -4,10 +4,11 @@
 - [x] Establish a separate Linux repository and identity.
 - [x] Document PS5/Linux boundaries and runtime principles.
 - [x] Add safe host diagnostics and dependency bootstrap.
-- [ ] Confirm target Linux machine, distribution, GPU and available RAM/VRAM.
+- [x] Confirm target Linux machine, distribution, GPU and available RAM/VRAM.
 
 ## Phase 1 — Linux foundation
 - [ ] Add CMake/Ninja project and CI source checks.
+- [x] Add first loopback-only read-only diagnostics API and browser dashboard.
 - [ ] Implement XDG paths, structured logging and config.
 - [ ] Implement hardware diagnostics (CPU, RAM, disks, Vulkan devices).
 - [ ] Add process supervisor with lifecycle tests.
@@ -35,7 +36,8 @@
 
 ## Phase 5 — packaging and release
 - [ ] Add Ubuntu/Debian build and install scripts.
-- [ ] Add opt-in systemd user service and clean uninstall.
+- [x] Add opt-in systemd user service template and enable it on the PS5 Linux host.
+- [ ] Add clean uninstall.
 - [ ] Add AppImage/deb packaging after runtime paths stabilize.
 - [ ] Run clean-machine smoke tests and GPU validation.
 - [ ] Publish versioned releases with checksums.
