@@ -19,6 +19,8 @@ This is the Linux edition booted by PS5 Linux Loader. Do not edit or deploy the 
 
 All web UI and application API routes require Basic Auth. The Ollama API is separate and has no authentication; it remains reachable on the trusted LAN at the user's explicit request. Do not expose it to the internet.
 
+The web server validates Host against local interface addresses and validates browser Origin against the request Host. It also sends a restrictive Content Security Policy and same-origin resource policy. Basic Auth over HTTP is not encryption.
+
 ## Frontend sections
 
 1. Overview: RAM, GTT, GPU busy, CPU load, runtime state.
@@ -35,7 +37,7 @@ All web UI and application API routes require Basic Auth. The Ollama API is sepa
 ### GGUF
 The GGUF header parser reads architecture, parameter count, block count, embedding length, attention heads, KV heads, key/value head dimensions and context length when available. KV cache is estimated from the selected context and cache type. The planner compares estimated model weights + KV cache + runtime overhead with available system memory and remaining GTT.
 
-The auto GPU-layer mode estimates a safe number of layers from remaining GTT. All and CPU-only remain available. A model can be paired with a sibling mmproj*.gguf; if more than one projector exists, the model card exposes a manual selector.
+The auto GPU-layer mode estimates a safe number of layers from remaining GTT. All and CPU-only remain available. A model can be paired with a sibling mmproj*.gguf; if more than one projector exists, the model card exposes a manual selector. The scanner and download allow-list are Linux-specific: native PS5LM model directories and the shared ai-models directory are deliberately excluded and are never modified.
 
 ### Hugging Face downloads
 The download queue:
@@ -50,7 +52,7 @@ The app stops the other GPU-heavy runtime before starting a text or image runtim
 
 ## Image pipeline
 
-The server invokes stable-diffusion.cpp on localhost with the configured Vulkan backend. It waits for the SD API to become ready before reporting the model loaded.
+The server invokes stable-diffusion.cpp on localhost with the configured Vulkan backend. The default backend assignment uses Vulkan for diffusion and CPU for text encoders/VAE, with auto-fit enabled and VAE tiling. This reduces pressure on the PS5's limited GTT budget and allows the backend to place model components in system RAM when appropriate.
 
 - txt2img: /sdapi/v1/txt2img
 - img2img: /sdapi/v1/img2img
@@ -66,7 +68,7 @@ Generated images are written to ~/.local/share/ps5-ai-studio/outputs/images. The
 - GET /api/diagnostics
 - GET /api/runtime
 - GET|POST /api/settings
-- GET /api/models?context=...
+- GET /api/models?context=...&cacheK=...
 - POST /api/models/delete
 - POST /api/runtime/text/load|unload
 - POST /api/runtime/image/load|unload
@@ -79,12 +81,14 @@ Generated images are written to ~/.local/share/ps5-ai-studio/outputs/images. The
 - GET|POST|DELETE /api/files
 - GET /api/image/models, POST /api/image/models/delete
 - POST /api/image/generate, POST /api/image/cancel, GET /api/image/progress, GET /api/image/options
-- GET /api/gallery and authenticated /gallery/<filename> output delivery
+- GET /api/gallery, DELETE /api/gallery/<filename>, authenticated /gallery/<filename> output delivery
 - GET /api/logs
 
 ## Security and boundaries
 
 - Basic Auth is required for the web UI and API.
+- Host and Origin checks reject requests from unrecognized hostnames and cross-origin browser requests.
+- CSP, X-Frame-Options, X-Content-Type-Options and same-origin resource policy are set.
 - Basic Auth over plain HTTP is not encryption. Use only on a trusted LAN.
 - Ollama port 11434 is intentionally left as the existing unauthenticated LAN API at the user's request.
 - The web server exposes no arbitrary shell or arbitrary filesystem API.
@@ -98,6 +102,7 @@ Generated images are written to ~/.local/share/ps5-ai-studio/outputs/images. The
 - Node syntax checks: passed during implementation.
 - HTML-to-JavaScript ID reference check: passed (no missing or duplicate IDs).
 - Authenticated API smoke tests: passed for health, diagnostics, models, image model scan, conversations CRUD and scratch-file CRUD.
+- Host allow-list and Origin rejection: passed.
 - Hugging Face search and file listing: tested for a GGUF repository and an SDXL repository.
 - Ollama streaming chat: tested with qwen3:8b-16k; model unloaded after the test.
 - GGUF header parser: validated against a synthetic GGUF header fixture; fixture removed afterward.

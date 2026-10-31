@@ -47,6 +47,7 @@ Use the PS5's current LAN address, for example http://192.168.2.210:8787. The ad
 - Generated images: ~/.local/share/ps5-ai-studio/outputs/images
 - Conversations and queue state: ~/.local/share/ps5-ai-studio
 - Credentials: ~/.config/ps5-ai-studio-linux/auth.env (mode 0600; never commit this file)
+- Native Prospero model directories are deliberately excluded from Linux scanning and downloads; no native model files are moved or modified.
 
 ## Requirements
 
@@ -68,6 +69,6 @@ The systemd user service is ps5-ai-studio-linux.service. Restart it with systemc
 ## Current limitations
 
 - Image generation requires a compatible local checkpoint. The Linux model library was empty during the 2026-10-31 implementation session; generation is wired but has not yet been validated against a real checkpoint.
-- Full-precision SDXL checkpoints can exceed the PS5's practical GTT budget once encoders and generation activations are included. The UI warns using a conservative estimate; smaller or quantized models are preferable.
+- Full-precision SDXL checkpoints may exceed the PS5's practical GTT budget. The image runtime uses auto-fit, CPU text-encoder/VAE placement and VAE tiling to reduce memory pressure; large checkpoints can still be slow or exceed available unified memory. The UI warns using a conservative estimate.
 - ControlNet and upscaler files can be catalogued/downloaded, but dedicated ControlNet and upscale workflows are not yet wired into the generation UI.
 - This edition is still under active development; runtime CLI options and backend API compatibility must be validated against the installed builds.
