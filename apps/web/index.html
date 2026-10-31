@@ -36,7 +36,7 @@
           <article class="runtime-card"><div class="runtime-head"><div class="runtime-logo llama">L</div><div><strong>llama.cpp</strong><small>GGUF · Vulkan / CPU</small></div><span class="runtime-state" id="llama-state">—</span></div><p>Standalone tekst-inference.</p></article>
           <article class="runtime-card"><div class="runtime-head"><div class="runtime-logo sd">✳</div><div><strong>Stable Diffusion</strong><small>stable-diffusion.cpp</small></div><span class="runtime-state" id="sd-state">—</span></div><p>Lokale image-generation runtime.</p></article>
         </div>
-        <div class="notice"><span>ⓘ</span><div><strong>Veilige lokale modus</strong><p>Deze eerste versie luistert alleen op localhost. LAN-toegang en modelbeheer worden pas toegevoegd met authenticatie en padbeveiliging.</p></div></div>
+        <div class="notice"><span>ⓘ</span><div><strong>Veilige lokale modus</strong><p>De interface is bereikbaar op je thuisnetwerk met een wachtwoord. Gebruik geen port-forward naar het internet.</p></div></div>
       </section>
       <section id="view-chat" class="view">
         <div class="chat-toolbar"><div><strong>Lokale chat</strong><span>Antwoorden via Ollama op deze PS5</span></div><label class="model-picker"><span>MODEL</span><select id="chat-model" aria-label="Selecteer model"></select></label></div>
@@ -44,7 +44,12 @@
         <form id="chat-form" class="chat-composer"><textarea id="chat-input" rows="2" placeholder="Stel een vraag…" maxlength="20000"></textarea><div class="composer-bottom"><span>Enter om te verzenden · Shift + Enter voor een nieuwe regel</span><button id="send-chat" type="submit">Versturen <span>↑</span></button></div></form>
       </section>
       <section id="view-models" class="view">
-        <div class="section-heading"><div><h3>Geïnstalleerde modellen</h3><p>Modellen die momenteel door Ollama worden aangeboden</p></div><button id="reload-models" class="secondary-button">Vernieuwen</button></div>
+        <div class="section-heading"><div><h3>Modellenbibliotheek</h3><p>Beheer de lokale Ollama-modellen op deze PS5</p></div><button id="reload-models" class="secondary-button">Vernieuwen</button></div>
+        <form id="model-pull-form" class="model-pull">
+          <div class="pull-copy"><strong>Nieuw model downloaden</strong><span>Gebruik een modelnaam uit de Ollama-bibliotheek, bijvoorbeeld qwen3:8b</span></div>
+          <div class="pull-controls"><input id="model-name" type="text" maxlength="220" placeholder="bijv. qwen3:8b" autocomplete="off" required><button id="pull-model" type="submit">Downloaden</button></div>
+          <div id="pull-progress-wrap" class="pull-progress-wrap" hidden><div class="pull-progress-head"><span id="pull-status">Download voorbereiden…</span><span id="pull-percent">0%</span></div><progress id="pull-progress" max="100" value="0"></progress><div class="pull-progress-foot"><span id="pull-size">—</span><button id="cancel-pull" class="text-button" type="button" hidden>Annuleren</button></div></div>
+        </form>
         <div id="models-grid" class="models-grid"><div class="empty-state"><div class="empty-icon">◈</div><h3>Modellen laden…</h3></div></div>
       </section>
       <section id="view-diagnostics" class="view">
