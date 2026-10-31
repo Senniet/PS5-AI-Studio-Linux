@@ -18,20 +18,28 @@ The credential file is mode 0600 in a mode 0700 directory and is not committed t
 
 Ollama is a separate service. Its current systemd override sets `OLLAMA_HOST=0.0.0.0:11434`, which exposes the Ollama API independently of this web login. Do not assume the web UI's Basic Auth protects port 11434. Review whether other LAN clients rely on that direct Ollama access before changing it.
 
-## Implemented
+## Text model library
 
-- Live CPU, kernel, RAM/swap, AMDGPU VRAM/GTT and TTM diagnostics.
-- Ollama installed-model listing, including size, family, quantization and loaded state.
-- Ollama model download with streamed per-layer progress.
+- List local Ollama models with size, family, quantization and loaded state.
+- Download from the Ollama library with streamed per-layer progress.
 - Cancel a download; Ollama documents that cancelled pulls resume from their previous progress on the next pull request.
 - Delete a local model after confirmation; deleting a currently loaded model is blocked until it is stopped.
 - Non-streaming local chat through Ollama.
+
+## Image model library
+
+Image checkpoints are scanned in:
+
+`~/.local/share/ps5-ai-studio/models/image/checkpoints`
+
+The scanner currently recognizes `.safetensors`, `.ckpt` and `.gguf` files and displays their sizes and modification dates. Separate directories are prepared for VAE, CLIP and LoRA assets. No image checkpoint was present on the PS5 during the 2026-10-31 scan, so image generation is not yet enabled or tested. The built `stable-diffusion.cpp` server supports local API routes for txt2img and img2img; integration follows after a compatible checkpoint is available.
+
+## Security and service
+
 - Basic Authentication on all routes.
-- Bounded JSON body parsing, timeouts and request-header limits.
+- Bounded JSON body parsing, request timeouts and header limits.
 - Static path traversal protection.
 - Systemd user service with a private environment file.
-
-## Install / configure
 
 Create `~/.config/ps5-ai-studio-linux/auth.env` with:
 
