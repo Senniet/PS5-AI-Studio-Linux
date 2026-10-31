@@ -41,10 +41,12 @@ Use the PS5's current LAN address, for example http://192.168.2.210:8787. The ad
 - Image checkpoints: ~/.local/share/ps5-ai-studio/models/image/checkpoints
 - VAE: ~/.local/share/ps5-ai-studio/models/image/vae
 - LoRA: ~/.local/share/ps5-ai-studio/models/image/loras
-- CLIP/encoders: ~/.local/share/ps5-ai-studio/models/image/clip
+- CLIP/text encoders: ~/.local/share/ps5-ai-studio/models/image/clip
+- CLIP Vision: ~/.local/share/ps5-ai-studio/models/image/clipvision
+- IP-Adapter: ~/.local/share/ps5-ai-studio/models/image/ipadapter
 - ControlNet: ~/.local/share/ps5-ai-studio/models/image/controlnet
 - Upscalers: ~/.local/share/ps5-ai-studio/models/image/upscalers
-- Generated images: ~/.local/share/ps5-ai-studio/outputs/images
+- Generated images and metadata: ~/.local/share/ps5-ai-studio/outputs/images
 - Conversations and queue state: ~/.local/share/ps5-ai-studio
 - Credentials: ~/.config/ps5-ai-studio-linux/auth.env (mode 0600; never commit this file)
 - Native Prospero model directories are deliberately excluded from Linux scanning and downloads; no native model files are moved or modified.
@@ -68,11 +70,15 @@ The systemd user service is ps5-ai-studio-linux.service. Restart it with systemc
 
 ## Current limitations
 
-- Image generation requires a compatible local checkpoint. The Linux model library was empty during the 2026-10-31 implementation session; generation is wired but has not yet been validated against a real checkpoint.
-- Full-precision SDXL checkpoints may exceed the PS5's practical GTT budget. The image runtime uses auto-fit, CPU text-encoder/VAE placement and VAE tiling to reduce memory pressure; large checkpoints can still be slow or exceed available unified memory. The UI warns using a conservative estimate.
-- ControlNet and upscaler files can be catalogued/downloaded, but dedicated ControlNet and upscale workflows are not yet wired into the generation UI.
+- A Stable Diffusion 1.5 checkpoint (4.27 GB) and RealESRGAN_x4plus upscaler (about 64 MB) are installed in the Linux model library. ESRGAN upscaling has been validated end-to-end on Vulkan; SD1.5 text-to-image and masked img2img/inpainting have both been validated on the installed checkpoint; Vulkan VAE decoding reduced a 512×512 decode from about 50 seconds on CPU to about 1.7 seconds.
+- Full-precision SDXL checkpoints may exceed the PS5's practical GTT budget. The image runtime uses auto-fit, CPU text-encoder placement, Vulkan VAE decoding and VAE tiling. This combination was tested successfully on the PS5; large checkpoints can still exceed available unified memory. The UI warns using a conservative estimate.
+- ControlNet and IP-Adapter inference are wired but still need compatible conditioning assets for hardware validation. ESRGAN upscaling is wired and has passed a Vulkan smoke test.
 - This edition is still under active development; runtime CLI options and backend API compatibility must be validated against the installed builds.
 
 ### Advanced image workflows
 
 The Image Studio also includes optional ControlNet conditioning, IP-Adapter reference guidance (with a matching CLIP Vision encoder), multiple LoRAs, ESRGAN upscaling as a separate cancellable job, and prompt/settings sidecars for each generated image. The gallery can restore a prior prompt and generation setup. These paths are wired to stable-diffusion.cpp; actual generation with each conditioning model remains pending installation of compatible assets.
+
+The Image Studio now includes combined model-memory planning for selected conditioning assets and reusable prompt presets (four built-in styles plus up to 100 local custom presets).
+
+Stable Diffusion 1.5 text-to-image and image-to-image/inpainting have now passed real Vulkan smoke tests on the PS5 Linux environment. ControlNet and IP-Adapter use the native asynchronous stable-diffusion.cpp job API; ControlNet runtime validation is still pending.

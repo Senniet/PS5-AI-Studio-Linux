@@ -52,7 +52,7 @@ The app stops the other GPU-heavy runtime before starting a text or image runtim
 
 ## Image pipeline
 
-The server invokes stable-diffusion.cpp on localhost with the configured Vulkan backend. The default backend assignment uses Vulkan for diffusion and CPU for text encoders/VAE, with auto-fit enabled and VAE tiling. This reduces pressure on the PS5's limited GTT budget and allows the backend to place model components in system RAM when appropriate.
+The server invokes stable-diffusion.cpp on localhost with the configured Vulkan backend. The default backend assignment uses Vulkan for diffusion and VAE, CPU for text encoders, with auto-fit enabled and VAE tiling. On the PS5 this reduced a 512×512 VAE decode from roughly 50 seconds on CPU to about 1.7 seconds on Vulkan. This reduces pressure on the PS5's limited GTT budget and allows the backend to place model components in system RAM when appropriate.
 
 - txt2img: /sdapi/v1/txt2img
 - img2img: /sdapi/v1/img2img
@@ -106,16 +106,30 @@ Generated images are written to ~/.local/share/ps5-ai-studio/outputs/images. The
 - Hugging Face search and file listing: tested for a GGUF repository and an SDXL repository.
 - Ollama streaming chat: tested with qwen3:8b-16k; model unloaded after the test.
 - GGUF header parser: validated against a synthetic GGUF header fixture; fixture removed afterward.
-- Image generation itself: not yet tested because no local image checkpoint is installed.
+- ESRGAN upscaling: tested end-to-end with RealESRGAN_x4plus on Vulkan; a 64×64 test image was enlarged to 256×256. Temporary test images were removed.
+- Stable Diffusion 1.5 checkpoint downloaded with SHA-256 validation; text-to-image and masked img2img/inpainting both passed on Vulkan. A 512×512 four-step txt2img run completed in about 4.4 seconds with Vulkan VAE decoding.
+- ControlNet and IP-Adapter conditioning remain wired but await compatible conditioning assets for hardware validation.
 
 ## Advanced image workflows (v0.4)
 
-- ControlNet assets are managed in the dedicated controlnet directory. Select a ControlNet checkpoint before loading the image runtime, then provide a matching control/reference image and strength.
+- ControlNet assets are managed in the dedicated controlnet directory. Select a ControlNet checkpoint before loading the image runtime, then provide a matching control/reference image and strength. A client-side Sobel edge-map preprocessor can turn an ordinary reference image into a basic edge map for Canny-style ControlNet checkpoints.
 - IP-Adapter assets and their CLIP Vision encoder are managed separately. Both must be selected together when loading the image runtime. An IP-Adapter reference image and strength are supplied per generation.
-- Multiple LoRAs can be selected simultaneously; the current UI applies one shared multiplier to the selected LoRAs.
+- Multiple LoRAs can be selected simultaneously; the current UI applies one shared multiplier to the selected LoRAs. Batch generation supports one to four images; the UI warns that larger batches increase memory pressure on the PS5.
 - ESRGAN upscaling runs as a separate cancellable sd-cli job. The image runtime is stopped first to avoid competing for GTT. Results are saved to the image gallery.
 - Each new generated image receives a JSON sidecar with prompt, negative prompt, model, dimensions, sampler, scheduler, seed and conditioning strengths. Gallery entries can restore the saved prompt/settings; deleting an image also deletes its sidecar.
 
 New image model categories: ipadapter and clipvision. New API routes: GET /api/gallery/<filename>/metadata, POST /api/image/upscale, GET /api/image/upscale/status, and POST /api/image/upscale/cancel.
 
-ControlNet, IP-Adapter and ESRGAN execution are wired to the installed stable-diffusion.cpp interfaces but remain hardware-unverified until the corresponding model assets are downloaded and a real generation/edit is run.
+ControlNet execution is wired to the native stable-diffusion.cpp job API and a SafeTensors FP16 SD1.5 Canny asset is installed, but end-to-end conditioning is not yet hardware-verified. IP-Adapter execution is wired but awaits compatible IP-Adapter and CLIP Vision assets. ESRGAN has passed a Vulkan smoke test.
+
+## Image planning and prompt presets
+
+The Image Studio calculates a combined memory estimate for the selected checkpoint, VAE, ControlNet, IP-Adapter and CLIP Vision assets. It reports estimated weight plus runtime overhead against currently free GTT and system memory. This is a conservative planning signal, not a guarantee: the backend's auto-fit and CPU component placement still determine actual allocations.
+
+Four built-in prompt presets are provided (photorealistic, cinematic, product photography and illustration). Users can save up to 100 named local presets, reload their prompt/negative prompt and generation settings, and delete custom presets. Presets are stored locally in the application state directory and are never uploaded.
+
+## Native conditioning jobs (v0.5)
+
+Stable Diffusion text-to-image and img2img/inpainting were exercised end-to-end on the PS5 Linux Vulkan backend. When ControlNet or IP-Adapter reference conditioning is supplied, the app now uses stable-diffusion.cpp's native asynchronous `/sdcpp/v1/img_gen` job API (submit, poll, preview progress and cancel), because the A1111-compatible `/sdapi/v1` routes do not expose those conditioning fields. The regular SDAPI path remains in place for standard generation and tested inpainting. Uploaded mask files are converted to a one-channel grayscale PNG and resized to the source image dimensions before submission. The mask can be inverted in the UI without changing the original uploaded mask.
+
+A SafeTensors FP16 SD1.5 Canny ControlNet checkpoint is stored in the Linux ControlNet library; the older PyTorch `.pth` copy was removed to reduce storage and avoid duplicate choices. ControlNet loading and conditioning still require a final end-to-end GPU test on this hardware.
