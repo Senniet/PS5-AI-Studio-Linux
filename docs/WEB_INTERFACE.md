@@ -21,7 +21,10 @@ Ollama is a separate service. Its current systemd override sets `OLLAMA_HOST=0.0
 ## Implemented
 
 - Live CPU, kernel, RAM/swap, AMDGPU VRAM/GTT and TTM diagnostics.
-- Ollama installed-model listing.
+- Ollama installed-model listing, including size, family, quantization and loaded state.
+- Ollama model download with streamed per-layer progress.
+- Cancel a download; Ollama documents that cancelled pulls resume from their previous progress on the next pull request.
+- Delete a local model after confirmation; deleting a currently loaded model is blocked until it is stopped.
 - Non-streaming local chat through Ollama.
 - Basic Authentication on all routes.
 - Bounded JSON body parsing, timeouts and request-header limits.
