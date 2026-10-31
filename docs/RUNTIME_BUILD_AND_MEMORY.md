@@ -147,6 +147,10 @@ The matching local kernel source was inspected at `drivers/gpu/drm/ttm/ttm_tt.c`
 
 Conclusion: a real GTT size increase needs the TTM parameter set before AMDGPU initialization, which for this boot setup means changing the kexec command line and booting the kernel again. Since the console cannot currently be rebooted remotely, no live memory parameter has been changed.
 
+## Ollama chat smoke test — 2026-10-31
+
+The new local web API was tested with `qwen3:8b-16k` (Q4_K_M). A prompt requesting only `OK` returned the expected response. Ollama reported the model loaded with 100% GPU offload and a 4096-token context. During that loaded test, AMDGPU reported 5,896,880,128 bytes (~5.49 GiB) GTT in use; Linux reported about 7.05 GiB available RAM and 0 bytes of swap used. This is a functional smoke test, not a throughput benchmark. The standalone llama.cpp runtime was not running; the detected llama-server process belonged to Ollama's private runner and is now excluded from the standalone runtime status.
+
 ## Notes
 
 - `vulkaninfo` emits a Mesa DRI3/presentation warning in this desktop session. Both inference runtimes nevertheless enumerate the RADV device; the warning did not prevent compute backend detection.
