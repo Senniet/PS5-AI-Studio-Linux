@@ -1,39 +1,54 @@
-# Linux web interface — first milestone
+# Linux web interface
 
-This milestone adds a dependency-free Node.js dashboard and a first local text-chat path for the PS5's separate Ubuntu Linux installation.
+The Linux-only web UI is served by a small dependency-free Node.js service.
 
-## Run
+## Network access
 
-```bash
-npm run check
-npm start
-```
+The service listens on `0.0.0.0:8787`, so it accepts IPv4 connections on all host interfaces. On the current PS5 Linux host (`192.168.2.210/24`), open:
 
-Open http://127.0.0.1:8787 on the Linux desktop. The optional user service template is in `packaging/systemd/ps5-ai-studio-linux.service`.
+`http://192.168.2.210:8787`
+
+The browser prompts for HTTP Basic Authentication:
+- Username: `admin`
+- Password: stored privately on the host in `~/.config/ps5-ai-studio-linux/auth.env`
+
+The credential file is mode 0600 in a mode 0700 directory and is not committed to Git. Configure a unique password of at least 24 characters. The service rejects startup when the password is missing or too short.
+
+**Network security:** this development service uses HTTP, so Basic Authentication credentials and chat traffic are not encrypted in transit. Use it only on a trusted private LAN. Do not configure router port forwarding or expose port 8787 directly to the public internet. For remote access, use a VPN or put a TLS-terminating authenticated reverse proxy in front. The host currently has no UFW or nftables command installed; verify any upstream VLAN/router rules separately.
+
+Ollama is a separate service. Its current systemd override sets `OLLAMA_HOST=0.0.0.0:11434`, which exposes the Ollama API independently of this web login. Do not assume the web UI's Basic Auth protects port 11434. Review whether other LAN clients rely on that direct Ollama access before changing it.
 
 ## Implemented
 
-- Loopback-only HTTP listener.
-- Read-only health and diagnostics API.
-- CPU, kernel, RAM/swap, AMDGPU VRAM/GTT and TTM values.
-- Detection of Ollama, standalone llama.cpp and stable-diffusion.cpp binaries/processes.
-- Responsive overview and hardware diagnostics views.
-- Installed Ollama model list, including family, parameter size, quantization and disk size.
-- Local chat through Ollama's `/api/chat` endpoint.
-- Chat requests are restricted to installed model names and user/assistant messages; context is initially capped at 4096 tokens and output at 1024 tokens.
-- Dashboard refreshes hardware diagnostics once per minute.
+- Live CPU, kernel, RAM/swap, AMDGPU VRAM/GTT and TTM diagnostics.
+- Ollama installed-model listing.
+- Non-streaming local chat through Ollama.
+- Basic Authentication on all routes.
+- Bounded JSON body parsing, timeouts and request-header limits.
+- Static path traversal protection.
+- Systemd user service with a private environment file.
 
-## Smoke test on PS5
+## Install / configure
 
-- Ubuntu 26.04.1, kernel 7.3.0-PinkSoup, AMD Oberon/RADV.
-- Ollama model `qwen3:8b-16k`, Q4_K_M, loaded with 100% GPU offload.
-- Local chat request returned the expected `OK.` response.
-- Context reported by Ollama: 4096 tokens.
-- During the loaded test, GTT use was about 5.49 GiB; Linux still reported about 7.05 GiB available RAM and no swap use.
-- This is a functional smoke test, not a performance benchmark.
+Create `~/.config/ps5-ai-studio-linux/auth.env` with:
 
-## Security and limitations
+```ini
+WEB_USER=admin
+WEB_PASSWORD=use-a-long-random-secret-of-at-least-24-characters
+```
 
-The service does not expose shell execution, arbitrary file access, model downloads, process control or LAN access. It binds to 127.0.0.1 only. Chat is currently non-streaming and uses Ollama; standalone llama.cpp and image generation are not yet wired into the UI. Model and image download/management are not implemented yet.
+Protect it:
 
-The dashboard reads Linux host data only. It does not call or modify the native Prospero application.
+```bash
+chmod 700 ~/.config/ps5-ai-studio-linux
+chmod 600 ~/.config/ps5-ai-studio-linux/auth.env
+```
+
+Then reload and restart the user service:
+
+```bash
+systemctl --user daemon-reload
+systemctl --user restart ps5-ai-studio-linux.service
+```
+
+The service remains separate from the native Prospero application.
