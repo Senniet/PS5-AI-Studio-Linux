@@ -43,7 +43,9 @@ Validated result:
 - `Vulkan0: AMD Custom Zen 2 (Oberon) (RADV GFX1013)`
 - Reported device budget: 7,730 MiB total, 7,495 MiB free at the time of the check.
 - A Qwen3 8B Q4_K_M model loaded through the Vulkan build with `-ngl 99`.
-- One short test generated at 41.9 tokens/s. This is a smoke-test measurement, not a benchmark.
+- One short Vulkan test generated at 41.9 tokens/s.
+- A CPU-only test with `-ngl 0` also completed and generated at 10.1 tokens/s.
+- These are short smoke-test measurements, not benchmarks.
 
 ## stable-diffusion.cpp (image)
 
