@@ -2,12 +2,18 @@ import http from "node:http";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../web");
-const HOST = "127.0.0.1";
+const HOST = process.env.HOST || "0.0.0.0";
 const PORT = Number(process.env.PORT || 8787);
 const OLLAMA = "http://127.0.0.1:11434";
+const WEB_USER = process.env.WEB_USER || "admin";
+const WEB_PASSWORD = process.env.WEB_PASSWORD || "";
+if (!WEB_PASSWORD || WEB_PASSWORD.length < 24) {
+  throw new Error("WEB_PASSWORD is missing or too short; configure the private systemd EnvironmentFile first.");
+}
 const MIME = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".svg": "image/svg+xml" };
 
 function readNumber(file) {
@@ -17,7 +23,7 @@ function memInfo() {
   const values = {};
   try {
     for (const line of fs.readFileSync("/proc/meminfo", "utf8").split("\n")) {
-      const match = line.match(/^(MemTotal|MemAvailable|SwapTotal|SwapFree):\s+(\d+)/);
+      const match = line.match(/^(MemTotal|MemAvailable|SwapTotal|SwapFree):\\s+(\\d+)/);
       if (match) values[match[1]] = Number(match[2]) * 1024;
     }
   } catch {}
@@ -51,9 +57,9 @@ function runningProcesses() {
   const found = { ollama: false, llamaCpp: false, stableDiffusion: false };
   try {
     for (const entry of fs.readdirSync("/proc")) {
-      if (!/^\d+$/.test(entry)) continue;
+      if (!/^\\d+$/.test(entry)) continue;
       let cmd = "";
-      try { cmd = fs.readFileSync(`/proc/${entry}/cmdline`, "utf8").replaceAll("\0", " "); } catch { continue; }
+      try { cmd = fs.readFileSync(`/proc/${entry}/cmdline`, "utf8").replaceAll("\\0", " "); } catch { continue; }
       if (cmd.includes("ollama serve")) found.ollama = true;
       if (cmd.includes(llamaBinary)) found.llamaCpp = true;
       if (cmd.includes(sdBinary)) found.stableDiffusion = true;
@@ -105,13 +111,31 @@ async function getModels() {
     quantization: model.details?.quantization_level || "—"
   }));
 }
-function send(res, status, body, type = "application/json; charset=utf-8") {
-  res.writeHead(status, { "Content-Type": type, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" });
+function send(res, status, body, type = "application/json; charset=utf-8", extraHeaders = {}) {
+  res.writeHead(status, { "Content-Type": type, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "X-Frame-Options": "DENY", ...extraHeaders });
   res.end(type.startsWith("application/json") ? JSON.stringify(body) : body);
 }
+function authorized(req) {
+  const header = req.headers.authorization || "";
+  if (!header.startsWith("Basic ")) return false;
+  let decoded;
+  try { decoded = Buffer.from(header.slice(6), "base64").toString("utf8"); } catch { return false; }
+  const separator = decoded.indexOf(":");
+  if (separator < 0) return false;
+  const user = Buffer.from(decoded.slice(0, separator));
+  const pass = Buffer.from(decoded.slice(separator + 1));
+  const expectedUser = Buffer.from(WEB_USER);
+  const expectedPass = Buffer.from(WEB_PASSWORD);
+  const userOk = user.length === expectedUser.length && crypto.timingSafeEqual(user, expectedUser);
+  const passOk = pass.length === expectedPass.length && crypto.timingSafeEqual(pass, expectedPass);
+  return userOk && passOk;
+}
 const server = http.createServer(async (req, res) => {
+  if (!authorized(req)) {
+    return send(res, 401, { error: "Authenticatie vereist" }, "application/json; charset=utf-8", { "WWW-Authenticate": 'Basic realm="PS5 AI Studio Linux", charset="UTF-8"' });
+  }
   try {
-    const url = new URL(req.url, `http://${HOST}:${PORT}`);
+    const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
     if (req.method === "GET" && url.pathname === "/api/health") return send(res, 200, { ok: true, service: "PS5 AI Studio Linux" });
     if (req.method === "GET" && url.pathname === "/api/diagnostics") return send(res, 200, diagnostics());
     if (req.method === "GET" && url.pathname === "/api/models") {
@@ -134,7 +158,8 @@ const server = http.createServer(async (req, res) => {
       const response = await fetch(`${OLLAMA}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: body.model, messages, stream: false, options: { num_ctx: 4096, num_predict: 1024 } })
+        body: JSON.stringify({ model: body.model, messages, stream: false, options: { num_ctx: 4096, num_predict: 1024 } }),
+        signal: AbortSignal.timeout(180000)
       });
       if (!response.ok) return send(res, 502, { error: `Ollama chat fout: HTTP ${response.status}` });
       const result = await response.json();
@@ -155,4 +180,8 @@ const server = http.createServer(async (req, res) => {
     else res.destroy();
   }
 });
-server.listen(PORT, HOST, () => console.log(`PS5 AI Studio Linux web UI: http://${HOST}:${PORT}`));
+server.requestTimeout = 120000;
+server.headersTimeout = 15000;
+server.keepAliveTimeout = 5000;
+server.maxHeadersCount = 100;
+server.listen(PORT, HOST, () => console.log(`PS5 AI Studio Linux web UI listening on http://${HOST}:${PORT}`));
