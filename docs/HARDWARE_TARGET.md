@@ -5,7 +5,7 @@ The first target environment is the user's Ubuntu installation running directly 
 ## Measured host
 
 - OS: Ubuntu 26.04.1 LTS.
-- Kernel: Linux 7.1.7.
+- Kernel: Linux 7.3.0-PinkSoup.
 - CPU: AMD Custom Zen 2 (Oberon), 16 logical CPUs.
 - GPU: AMD Custom Zen 2 (Oberon), PCI ID `1002:13fb`, RADV GFX1013.
 - Mesa: RADV 26.2.5 (Kisak Mesa PPA).
