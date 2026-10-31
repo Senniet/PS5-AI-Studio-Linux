@@ -99,8 +99,19 @@ async function readJson(req, maxBytes = 1_000_000) {
   try { return JSON.parse(Buffer.concat(chunks).toString("utf8")); }
   catch { throw Object.assign(new Error("Invalid JSON"), { status: 400 }); }
 }
+async function getRunningModels() {
+  try {
+    const response = await fetch(`${OLLAMA}/api/ps`, { signal: AbortSignal.timeout(3000) });
+    if (!response.ok) return [];
+    const data = await response.json();
+    return (data.models || []).map((model) => model.name);
+  } catch { return []; }
+}
 async function getModels() {
-  const response = await fetch(`${OLLAMA}/api/tags`, { signal: AbortSignal.timeout(4000) });
+  const [response, running] = await Promise.all([
+    fetch(`${OLLAMA}/api/tags`, { signal: AbortSignal.timeout(4000) }),
+    getRunningModels()
+  ]);
   if (!response.ok) throw new Error(`Ollama returned HTTP ${response.status}`);
   const data = await response.json();
   return (data.models || []).map((model) => ({
@@ -108,8 +119,14 @@ async function getModels() {
     size: model.size,
     family: model.details?.family || "unknown",
     parameters: model.details?.parameter_size || "—",
-    quantization: model.details?.quantization_level || "—"
+    quantization: model.details?.quantization_level || "—",
+    running: running.includes(model.name)
   }));
+}
+function validModelName(name) {
+  return typeof name === "string" && name.length <= 220 &&
+    /^[A-Za-z0-9][A-Za-z0-9._/-]*(?::[A-Za-z0-9][A-Za-z0-9._-]*)?$/.test(name) &&
+    !name.includes("..") && !name.includes("//");
 }
 function send(res, status, body, type = "application/json; charset=utf-8", extraHeaders = {}) {
   res.writeHead(status, { "Content-Type": type, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "X-Frame-Options": "DENY", ...extraHeaders });
@@ -141,6 +158,49 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/models") {
       try { return send(res, 200, { models: await getModels() }); }
       catch (error) { return send(res, 503, { error: "Ollama is niet bereikbaar", detail: error.message }); }
+    }
+    if (req.method === "POST" && url.pathname === "/api/models/pull") {
+      const body = await readJson(req, 4096);
+      if (!body || !validModelName(body.name)) return send(res, 400, { error: "Ongeldige modelnaam" });
+      const controller = new AbortController();
+      res.on("close", () => { if (!res.writableEnded) controller.abort(); });
+      try {
+        const upstream = await fetch(`${OLLAMA}/api/pull`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model: body.name, stream: true }),
+          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(7200000)])
+        });
+        if (!upstream.ok) return send(res, 502, { error: `Ollama pull fout: HTTP ${upstream.status}` });
+        res.writeHead(200, { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "X-Accel-Buffering": "no" });
+        res.flushHeaders();
+        if (upstream.body) {
+          for await (const chunk of upstream.body) {
+            if (res.destroyed) break;
+            if (!res.write(chunk)) await new Promise((resolve) => res.once("drain", resolve));
+          }
+        }
+        if (!res.writableEnded) res.end();
+      } catch (error) {
+        if (!res.headersSent) return send(res, 502, { error: error.message || "Download mislukt" });
+        if (!res.destroyed && !res.writableEnded) res.end(JSON.stringify({ error: error.message || "Download onderbroken" }) + "\\n");
+      }
+      return;
+    }
+    if (req.method === "DELETE" && url.pathname === "/api/models") {
+      const body = await readJson(req, 4096);
+      if (!body || !validModelName(body.name)) return send(res, 400, { error: "Ongeldige modelnaam" });
+      const models = await getModels();
+      if (!models.some((model) => model.name === body.name)) return send(res, 404, { error: "Model niet gevonden" });
+      if (models.some((model) => model.name === body.name && model.running)) return send(res, 409, { error: "Model is nog geladen. Stop het model eerst in Ollama." });
+      const upstream = await fetch(`${OLLAMA}/api/delete`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: body.name }),
+        signal: AbortSignal.timeout(30000)
+      });
+      if (!upstream.ok) return send(res, upstream.status === 404 ? 404 : 502, { error: `Ollama delete fout: HTTP ${upstream.status}` });
+      return send(res, 200, { ok: true, deleted: body.name });
     }
     if (req.method === "POST" && url.pathname === "/api/chat") {
       const body = await readJson(req);
