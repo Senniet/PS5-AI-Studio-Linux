@@ -60,7 +60,7 @@ This is a functional parity tracker, not a claim that the two platforms share co
 - Multi-LoRA selection with shared multiplier: implemented.
 - ESRGAN upscale job using sd-cli, with status, logs and cancellation: validated on Vulkan with RealESRGAN_x4plus.
 - Generation prompt/settings sidecars and gallery prompt restoration: implemented.
-- Combined checkpoint/conditioning memory planner and built-in/custom prompt presets: implemented.
+- Combined checkpoint/conditioning memory planner, server-side load preflight and built-in/custom prompt presets: implemented.
 - Batch generation (1–4 images) with batch-aware prompt presets and gallery metadata: implemented.
 - SD 1.5 txt2img and img2img/inpainting: tested on PS5 Vulkan; 512×512 smoke generations completed and saved.
 - Native asynchronous ControlNet/IP-Adapter job path, job progress, preview metadata and cancellation: implemented; ControlNet conditioning awaits GPU validation with the local SafeTensors FP16 asset.

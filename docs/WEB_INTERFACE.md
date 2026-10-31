@@ -124,7 +124,7 @@ ControlNet execution is wired to the native stable-diffusion.cpp job API and a S
 
 ## Image planning and prompt presets
 
-The Image Studio calculates a combined memory estimate for the selected checkpoint, VAE, ControlNet, IP-Adapter and CLIP Vision assets. It reports estimated weight plus runtime overhead against currently free GTT and system memory. This is a conservative planning signal, not a guarantee: the backend's auto-fit and CPU component placement still determine actual allocations.
+The Image Studio calculates a combined memory estimate for the selected checkpoint, VAE, ControlNet, IP-Adapter and CLIP Vision assets. The backend repeats this preflight before spawning the runtime and refuses combinations estimated to exceed safe available memory; tight combinations are still allowed with stable-diffusion.cpp auto-fit/CPU offload. It reports estimated weight plus runtime overhead against currently free GTT and system memory. This is a conservative planning signal, not a guarantee: the backend's auto-fit and CPU component placement still determine actual allocations.
 
 Four built-in prompt presets are provided (photorealistic, cinematic, product photography and illustration). Users can save up to 100 named local presets, reload their prompt/negative prompt and generation settings, and delete custom presets. Presets are stored locally in the application state directory and are never uploaded.
 
