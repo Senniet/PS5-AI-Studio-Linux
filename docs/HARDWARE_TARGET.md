@@ -10,14 +10,16 @@ The first target environment is the user's Ubuntu installation running directly 
 - GPU: AMD Custom Zen 2 (Oberon), PCI ID `1002:13fb`, RADV GFX1013.
 - Mesa: RADV 26.2.5 (Kisak Mesa PPA).
 - Vulkan: 1.4; RADV device is enumerated successfully.
-- RAM: 14.1 GiB visible to Linux; approximately 11 GiB available in the initial idle sample.
+- RAM: 14.1 GiB visible to Linux; approximately 12.7 GiB available in the latest idle sample.
 - Swap: 7 GiB zram.
 - Reserved VRAM: 512 MiB (`/boot/efi/vram.txt = 0x20000000`).
 - GTT: 7,218.6 MiB (`/sys/class/drm/card0/device/mem_info_gtt_total`).
 - Vulkan reports about 7,730 MiB on the RADV device.
-- TTM `pages_limit`: 1,847,951 pages (4 KiB), which matches the current GTT budget.
+- TTM `pages_limit`: 1,848,125 pages (4 KiB), which matches the current GTT budget.
 
 The Vulkan heap is not extra physical RAM. PS5 is a unified-memory system: Linux RAM, GTT allocations and VRAM allocations all compete for the same physical memory budget.
+
+- TTM `page_pool_size`: 0 pages.
 
 ## Runtime validation
 
