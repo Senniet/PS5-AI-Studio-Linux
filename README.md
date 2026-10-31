@@ -4,9 +4,9 @@ A standalone Linux edition of PS5 AI Studio for Ubuntu running directly on PS5 h
 
 ## Current status
 
-The Linux host has been validated on Ubuntu 26.04.1 with kernel 7.3.0-PinkSoup, AMD Oberon/RADV Vulkan, llama.cpp Vulkan and stable-diffusion.cpp Vulkan builds. A first read-only browser dashboard is now available with live CPU, RAM, GPU/TTM and runtime diagnostics.
+The Linux host has been validated on Ubuntu 26.04.1 with kernel 7.3.0-PinkSoup, AMD Oberon/RADV Vulkan, llama.cpp Vulkan and stable-diffusion.cpp Vulkan builds. The first browser interface now includes a live hardware dashboard, Ollama model list and local non-streaming chat using Ollama. A Qwen3 8B Q4_K_M chat smoke test completed with full GPU offload.
 
-The dashboard is intentionally local-only for this first milestone. It does not yet manage models, start or stop inference engines, download checkpoints, or expose the host to the LAN.
+The web service is intentionally loopback-only. It does not yet manage downloads, start/stop standalone engines, generate images or expose the host to the LAN.
 
 ## Platform boundaries
 
@@ -14,7 +14,7 @@ The dashboard is intentionally local-only for this first milestone. It does not 
 |---|---|---|
 | Runtime | Native PS5 title | Linux processes/services |
 | GPU | PS5_Vulkan / PS5 RADV port | System Vulkan loader + Mesa RADV |
-| Text engine | PS5-patched llama.cpp | Upstream llama.cpp / GGML Vulkan |
+| Text engine | PS5-patched llama.cpp | Upstream llama.cpp / GGML Vulkan; initial chat via Ollama |
 | Image engine | PS5-patched stable-diffusion.cpp | Linux stable-diffusion.cpp / GGML Vulkan |
 | Storage | PS5 title/data paths | XDG data/config/state directories |
 | Deployment | PPSA99731 / console FTP | Linux packages/systemd |
@@ -35,7 +35,7 @@ Open http://127.0.0.1:8787 on the Linux desktop. To install the user service, co
 
 ```text
 apps/server/                 Linux diagnostics/API service
-apps/web/                    Browser dashboard
+apps/web/                    Browser dashboard, model list and local chat
 runtime/text/                llama.cpp integration (planned)
 runtime/image/               stable-diffusion.cpp integration (planned)
 platform/linux/              XDG paths, process control and host probes (planned)
@@ -47,7 +47,7 @@ packaging/systemd/            user service template
 
 ## Security
 
-The first dashboard binds only to 127.0.0.1. It exposes read-only health and diagnostics endpoints; it does not expose arbitrary shell execution, unrestricted file access, model downloads or process control. LAN access must remain disabled until authenticated sessions, API authorization and path validation are implemented.
+The first dashboard binds only to 127.0.0.1. It exposes read-only diagnostics, installed-model metadata and a constrained local chat proxy; it does not expose arbitrary shell execution, unrestricted file access, model downloads or process control. LAN access must remain disabled until authenticated sessions, API authorization and path validation are implemented.
 
 ## License and attribution
 
