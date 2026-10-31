@@ -19,6 +19,7 @@
 - [ ] Build CPU backend first, then GGML Vulkan.
 - [ ] Add model discovery, metadata and safe download/resume.
 - [ ] Add memory/context fit estimator based on host RAM and GPU heaps.
+- [x] Add first local Ollama-backed chat page/API and run a smoke test on the PS5.
 - [ ] Add OpenAI-compatible chat endpoint and streaming tests.
 
 ## Phase 3 — image generation
