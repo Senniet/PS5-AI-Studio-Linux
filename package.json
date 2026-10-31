@@ -1,11 +1,13 @@
 {
   "name": "ps5-ai-studio-linux",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node apps/server/server.mjs",
     "check": "node --check apps/server/server.mjs && node --check apps/web/app.js"
   },
-  "engines": { "node": ">=22" }
+  "engines": {
+    "node": ">=22"
+  }
 }

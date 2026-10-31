@@ -1,54 +1,73 @@
-# PS5 AI Studio Linux
+# PS5 AI Studio — Linux
 
-A standalone Linux edition of PS5 AI Studio for Ubuntu running directly on PS5 hardware. This repository is intentionally separate from [PS5-AI-Studio](https://github.com/Senniet/PS5-AI-Studio), which targets the native PlayStation 5 title.
+A separate Linux-native edition of PS5 AI Studio for Ubuntu booted on PlayStation 5 through PS5 Linux Loader. This project is **not** the native Prospero/PS5 application and does not share its build, deployment, SDK or title-ID workflow.
 
-## Current status
+## Current capabilities
 
-The Linux host has been validated on Ubuntu 26.04.1 with kernel 7.3.0-PinkSoup, AMD Oberon/RADV Vulkan, llama.cpp Vulkan and stable-diffusion.cpp Vulkan builds. The first browser interface now includes a live hardware dashboard, Ollama model list and local non-streaming chat using Ollama. A Qwen3 8B Q4_K_M chat smoke test completed with full GPU offload.
+- Browser UI on 0.0.0.0:8787 with HTTP Basic Authentication.
+- Local chat using Ollama or llama.cpp; streaming responses, image input for vision models, text-file attachments, saved conversations and Markdown export.
+- Hugging Face GGUF search, metadata inspection, memory estimates, model download queue with pause/resume, SHA-256 validation, manual mmproj selection, model load/unload and deletion.
+- Ollama model pull, list and deletion.
+- Image Studio using stable-diffusion.cpp: checkpoint search/download, checkpoint/VAE/LoRA management, text-to-image, image-to-image, mask painting/inpainting, generation progress/cancel and local gallery.
+- Live diagnostics for CPU, RAM/swap, AMDGPU VRAM/GTT/TTM, temperatures, storage and runtime state.
+- Settings, logs and a bounded scratch-file workspace.
 
-The web service listens on all IPv4 interfaces at port 8787 and is protected by HTTP Basic Authentication. Use it only on a trusted LAN: HTTP is not encrypted, and no router port forwarding should be configured. It now supports streamed Ollama model downloads (with resumable cancellation), safe deletion of stopped models, model listing and local chat. A separate image-checkpoint library scanner is now present; actual image generation awaits a compatible checkpoint on the PS5. Standalone llama.cpp management remains in progress.
+## Platform separation
 
-## Platform boundaries
+| Linux project | Native PS5 project |
+|---|---|
+| Senniet/PS5-AI-Studio-Linux | Senniet/PS5-AI-Studio |
+| Ubuntu booted with PS5 Linux Loader | Native Prospero application |
+| Node.js, Ollama, llama.cpp, stable-diffusion.cpp, Vulkan/RADV | Prospero SDK and native PS5 runtime |
+| Web UI and Linux services | Native PS5 UI and native deployment |
+| This repository only | Never modify during Linux work |
 
-| Concern | PS5 AI Studio | PS5 AI Studio Linux |
-|---|---|---|
-| Runtime | Native PS5 title | Linux processes/services |
-| GPU | PS5_Vulkan / PS5 RADV port | System Vulkan loader + Mesa RADV |
-| Text engine | PS5-patched llama.cpp | Upstream llama.cpp / GGML Vulkan; initial chat via Ollama |
-| Image engine | PS5-patched stable-diffusion.cpp | Linux stable-diffusion.cpp / GGML Vulkan |
-| Storage | PS5 title/data paths | XDG data/config/state directories |
-| Deployment | PPSA99731 / console FTP | Linux packages/systemd |
-| Hardware | PS5 SoC | Linux CPU/GPU/RAM/storage |
+## Runtime ports
 
-## Quick start
+| Service | Bind | Port | Authentication |
+|---|---|---:|---|
+| PS5 AI Studio web UI | 0.0.0.0 | 8787 | Basic Auth |
+| Ollama API | Existing LAN bind | 11434 | None (kept open at the user's request; private LAN only) |
+| llama.cpp | 127.0.0.1 | 8081 | Behind authenticated web UI |
+| stable-diffusion.cpp | 127.0.0.1 | 1234 | Behind authenticated web UI |
 
-Requires Node.js 22 or newer:
+Use the PS5's current LAN address, for example http://192.168.2.210:8787. The address may change if DHCP changes.
 
-```bash
-npm run check
-npm start
-```
+**Security:** Basic Auth over HTTP does not encrypt credentials. Keep the UI and the unauthenticated Ollama API on a trusted private network. Do not port-forward either service to the public internet. Use a VPN or a TLS reverse proxy for remote access.
 
-Open http://192.168.2.210:8787 from a device on the home LAN (or use the PS5's current LAN address). The browser asks for the credentials stored in `~/.config/ps5-ai-studio-linux/auth.env`. To install the user service, copy `packaging/systemd/ps5-ai-studio-linux.service` to `~/.config/systemd/user/`, then run `systemctl --user daemon-reload && systemctl --user enable --now ps5-ai-studio-linux.service`.
+## Model and data directories
 
-## Project layout
+- Text GGUF: ~/.local/share/ps5-ai-studio/models/text
+- Image checkpoints: ~/.local/share/ps5-ai-studio/models/image/checkpoints
+- VAE: ~/.local/share/ps5-ai-studio/models/image/vae
+- LoRA: ~/.local/share/ps5-ai-studio/models/image/loras
+- CLIP/encoders: ~/.local/share/ps5-ai-studio/models/image/clip
+- ControlNet: ~/.local/share/ps5-ai-studio/models/image/controlnet
+- Upscalers: ~/.local/share/ps5-ai-studio/models/image/upscalers
+- Generated images: ~/.local/share/ps5-ai-studio/outputs/images
+- Conversations and queue state: ~/.local/share/ps5-ai-studio
+- Credentials: ~/.config/ps5-ai-studio-linux/auth.env (mode 0600; never commit this file)
 
-```text
-apps/server/                 Linux diagnostics/API service
-apps/web/                    Browser dashboard, text model library, image checkpoint scanner and local chat
-runtime/text/                llama.cpp integration (planned)
-runtime/image/               stable-diffusion.cpp integration (planned)
-platform/linux/              XDG paths, process control and host probes (planned)
-scripts/                     host setup and diagnostics
-tests/                       smoke and integration tests (planned)
-docs/                         architecture, hardware and runtime notes
-packaging/systemd/            user service template
-```
+## Requirements
 
-## Security
+- Ubuntu 26.04 or compatible Linux distribution
+- Node.js 22+
+- Ollama (optional if using llama.cpp only)
+- llama.cpp built with Vulkan support
+- stable-diffusion.cpp built with Vulkan support for image workflows
+- AMDGPU/RADV Vulkan device exposed by the PS5 Linux kernel
 
-The dashboard binds to 0.0.0.0:8787 and requires Basic Authentication for all routes. It exposes diagnostics, installed-model metadata and a constrained local chat proxy; it does not expose arbitrary shell execution, unrestricted file access, model downloads or process control. HTTP credentials and chat traffic are not encrypted: use a trusted private LAN only, never forward the port from the internet, and use a VPN or authenticated TLS reverse proxy for remote access.
+The runtime paths are currently configured for the PS5 development environment. See docs/WEB_INTERFACE.md for implementation and API details.
 
-## License and attribution
+## Development
 
-The PS5 project is GPL-3.0-or-later and incorporates upstream projects with their own licenses. Preserve notices and verify compatibility before copying source files, patches, assets or dependencies.
+Run npm run check to validate JavaScript syntax. Run npm start to launch the service manually.
+
+The systemd user service is ps5-ai-studio-linux.service. Restart it with systemctl --user restart ps5-ai-studio-linux.service. Inspect it with systemctl --user status ps5-ai-studio-linux.service and journalctl --user -u ps5-ai-studio-linux.service -f.
+
+## Current limitations
+
+- Image generation requires a compatible local checkpoint. The Linux model library was empty during the 2026-10-31 implementation session; generation is wired but has not yet been validated against a real checkpoint.
+- Full-precision SDXL checkpoints can exceed the PS5's practical GTT budget once encoders and generation activations are included. The UI warns using a conservative estimate; smaller or quantized models are preferable.
+- ControlNet and upscaler files can be catalogued/downloaded, but dedicated ControlNet and upscale workflows are not yet wired into the generation UI.
+- This edition is still under active development; runtime CLI options and backend API compatibility must be validated against the installed builds.

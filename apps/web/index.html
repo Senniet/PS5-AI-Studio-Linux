@@ -1,76 +1,127 @@
 <!doctype html>
 <html lang="nl">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0b0d12">
-  <title>PS5 AI Studio · Linux</title>
-  <link rel="stylesheet" href="/styles.css">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b0d12">
+<title>PS5 AI Studio · Linux</title><link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <div class="app-shell">
-    <aside class="sidebar">
-      <div class="brand"><div class="brand-mark">AI</div><div><strong>AI Studio</strong><span>Linux edition</span></div></div>
-      <div class="nav-label">WORKSPACE</div>
-      <button class="nav-item active" data-view="overview"><span class="nav-icon">◫</span> Overzicht</button>
-      <button class="nav-item" data-view="chat"><span class="nav-icon">▤</span> Chat</button>
-      <button class="nav-item" data-view="models"><span class="nav-icon">◈</span> Tekstmodellen</button>
-      <button class="nav-item" data-view="images"><span class="nav-icon">✳</span> Beeldmodellen</button>
-      <button class="nav-item" data-view="diagnostics"><span class="nav-icon">⌁</span> Diagnostiek</button>
-      <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span> Instellingen</button>
-      <div class="sidebar-bottom"><span class="status-dot"></span><span>Linux host verbonden</span><small id="last-update">Laden…</small></div>
-    </aside>
-    <main class="main">
-      <header class="topbar"><div><div class="eyebrow">PS5 · UBUNTU</div><h1 id="page-title">Overzicht</h1></div><div class="top-actions"><span class="live-pill"><i></i> LIVE</span><button id="refresh" class="icon-button" aria-label="Vernieuwen">↻</button></div></header>
-      <section id="view-overview" class="view active">
-        <div class="welcome"><div><div class="eyebrow">LOCAL AI WORKSTATION</div><h2>Alles klaar om te bouwen.</h2><p>Beheer je AI-runtimes en houd de PS5-hardware in de gaten.</p></div><div class="welcome-chip"><span class="pulse"></span><span id="host-name">PS5 Linux</span></div></div>
-        <div class="section-heading"><div><h3>Systeemstatus</h3><p>Live gegevens van de Linux-host</p></div><span class="muted" id="updated-at">—</span></div>
-        <div class="stat-grid">
-          <article class="stat-card"><div class="card-top"><span>Werkgeheugen</span><span class="card-icon">▤</span></div><strong id="ram-used">—</strong><div class="meter"><i id="ram-meter"></i></div><small id="ram-detail">—</small></article>
-          <article class="stat-card"><div class="card-top"><span>GPU-geheugen</span><span class="card-icon">◉</span></div><strong id="gtt-total">—</strong><div class="meter"><i id="gtt-meter"></i></div><small id="gtt-detail">—</small></article>
-          <article class="stat-card"><div class="card-top"><span>CPU</span><span class="card-icon">⌘</span></div><strong id="cpu-count">—</strong><div class="subtle-line">CPU-modelinformatie</div><small id="cpu-detail">—</small></article>
-          <article class="stat-card"><div class="card-top"><span>Kernel</span><span class="card-icon">⌁</span></div><strong class="kernel-value" id="kernel">—</strong><div class="subtle-line">Ubuntu Linux</div><small id="os-detail">—</small></article>
-        </div>
-        <div class="section-heading"><div><h3>AI-runtimes</h3><p>Beschikbaarheid en actieve processen</p></div></div>
-        <div class="runtime-grid">
-          <article class="runtime-card"><div class="runtime-head"><div class="runtime-logo">O</div><div><strong>Ollama</strong><small>Model API · :11434</small></div><span class="runtime-state" id="ollama-state">—</span></div><p>Lokale modelserver en API.</p></article>
-          <article class="runtime-card"><div class="runtime-head"><div class="runtime-logo llama">L</div><div><strong>llama.cpp</strong><small>GGUF · Vulkan / CPU</small></div><span class="runtime-state" id="llama-state">—</span></div><p>Standalone tekst-inference.</p></article>
-          <article class="runtime-card"><div class="runtime-head"><div class="runtime-logo sd">✳</div><div><strong>Stable Diffusion</strong><small>stable-diffusion.cpp</small></div><span class="runtime-state" id="sd-state">—</span></div><p>Lokale image-generation runtime.</p></article>
-        </div>
-        <div class="notice"><span>ⓘ</span><div><strong>Veilige lokale modus</strong><p>De interface is bereikbaar op je thuisnetwerk met een wachtwoord. Gebruik geen port-forward naar het internet.</p></div></div>
-      </section>
-      <section id="view-chat" class="view">
-        <div class="chat-toolbar"><div><strong>Lokale chat</strong><span>Antwoorden via Ollama op deze PS5</span></div><label class="model-picker"><span>MODEL</span><select id="chat-model" aria-label="Selecteer model"></select></label></div>
-        <div id="chat-messages" class="chat-messages"><div class="chat-empty"><div class="empty-icon">✦</div><h3>Waar kan ik je mee helpen?</h3><p>Je berichten blijven op deze Linux-host en worden verwerkt door het geselecteerde lokale model.</p></div></div>
-        <form id="chat-form" class="chat-composer"><textarea id="chat-input" rows="2" placeholder="Stel een vraag…" maxlength="20000"></textarea><div class="composer-bottom"><span>Enter om te verzenden · Shift + Enter voor een nieuwe regel</span><button id="send-chat" type="submit">Versturen <span>↑</span></button></div></form>
-      </section>
-      <section id="view-models" class="view">
-        <div class="section-heading"><div><h3>Modellenbibliotheek</h3><p>Beheer de lokale Ollama-modellen op deze PS5</p></div><button id="reload-models" class="secondary-button">Vernieuwen</button></div>
-        <form id="model-pull-form" class="model-pull">
-          <div class="pull-copy"><strong>Nieuw model downloaden</strong><span>Gebruik een modelnaam uit de Ollama-bibliotheek, bijvoorbeeld qwen3:8b</span></div>
-          <div class="pull-controls"><input id="model-name" type="text" maxlength="220" placeholder="bijv. qwen3:8b" autocomplete="off" required><button id="pull-model" type="submit">Downloaden</button></div>
-          <div id="pull-progress-wrap" class="pull-progress-wrap" hidden><div class="pull-progress-head"><span id="pull-status">Download voorbereiden…</span><span id="pull-percent">0%</span></div><progress id="pull-progress" max="100" value="0"></progress><div class="pull-progress-foot"><span id="pull-size">—</span><button id="cancel-pull" class="text-button" type="button" hidden>Annuleren</button></div></div>
-        </form>
-        <div id="models-grid" class="models-grid"><div class="empty-state"><div class="empty-icon">◈</div><h3>Modellen laden…</h3></div></div>
-      </section>
-      <section id="view-images" class="view">
-        <div class="section-heading"><div><h3>Beeldmodellen</h3><p>Lokale checkpoints voor stable-diffusion.cpp</p></div><button id="reload-image-models" class="secondary-button">Vernieuwen</button></div>
-        <div class="image-model-location"><span>CHECKPOINTMAP</span><code id="image-model-directory">Laden…</code></div>
-        <div id="image-models-grid" class="models-grid"><div class="empty-state"><div class="empty-icon">✳</div><h3>Beeldmodellen zoeken…</h3></div></div>
-        <div class="notice image-note"><span>ⓘ</span><div><strong>Model nog niet gevonden?</strong><p>Plaats een volledig SDXL-checkpoint (.safetensors of .ckpt) in de checkpointmap hierboven. VAE, CLIP en LoRA-bestanden krijgen aparte mappen. De Linux-installatie bevat op dit moment nog geen beeldcheckpoint, dus beeldgeneratie kan nog niet getest worden.</p></div></div>
-      </section>
-      <section id="view-diagnostics" class="view">
-        <div class="section-heading"><div><h3>Hardwarediagnostiek</h3><p>Gemeten waarden rechtstreeks uit Linux en AMDGPU</p></div></div>
-        <div class="diagnostic-grid">
-          <article class="panel"><h4>Processor</h4><div class="detail-row"><span>Model</span><b id="diag-cpu-model">—</b></div><div class="detail-row"><span>Logische cores</span><b id="diag-cpu-count">—</b></div><div class="detail-row"><span>Kernel</span><b id="diag-kernel">—</b></div><div class="detail-row"><span>Uptime</span><b id="diag-uptime">—</b></div></article>
-          <article class="panel"><h4>Werkgeheugen</h4><div class="detail-row"><span>Totaal</span><b id="diag-ram-total">—</b></div><div class="detail-row"><span>Gebruikt</span><b id="diag-ram-used">—</b></div><div class="detail-row"><span>Beschikbaar</span><b id="diag-ram-free">—</b></div><div class="detail-row"><span>Swap beschikbaar</span><b id="diag-swap">—</b></div></article>
-          <article class="panel"><h4>AMD GPU</h4><div class="detail-row"><span>Device</span><b id="diag-gpu">—</b></div><div class="detail-row"><span>Gereserveerd VRAM</span><b id="diag-vram">—</b></div><div class="detail-row"><span>GTT totaal</span><b id="diag-gtt">—</b></div><div class="detail-row"><span>GTT gebruikt</span><b id="diag-gtt-used">—</b></div><div class="detail-row"><span>TTM pages_limit</span><b id="diag-ttm">—</b></div><div class="detail-row"><span>TTM page_pool_size</span><b id="diag-pool">—</b></div></article>
-        </div>
-      </section>
-      <section id="view-settings" class="view"><div class="empty-state"><div class="empty-icon">⚙</div><h3>Instellingen worden voorbereid</h3><p>Netwerktoegang, opslaglocaties en runtimevoorkeuren worden pas ingeschakeld zodra validatie en toegangsbeveiliging klaar zijn.</p></div></section>
-      <footer>PS5 AI Studio Linux <span>·</span> vroege ontwikkelversie</footer>
-    </main>
+<div class="app-shell">
+<aside class="sidebar">
+  <div class="brand"><div class="brand-mark">AI</div><div><strong>PS5 AI Studio</strong><span>Linux edition · Oberon</span></div></div>
+  <div class="nav-label">WORKSPACE</div>
+  <button class="nav-item active" data-view="overview"><span>◫</span> Overzicht</button>
+  <button class="nav-item" data-view="chat"><span>▤</span> AI Chat</button>
+  <button class="nav-item" data-view="models"><span>◈</span> Modellenbibliotheek</button>
+  <button class="nav-item" data-view="market"><span>⌕</span> Modelwinkel</button>
+  <button class="nav-item" data-view="images"><span>✳</span> Image Studio</button>
+  <button class="nav-item" data-view="files"><span>▧</span> Bestanden</button>
+  <div class="nav-label nav-label-spaced">SYSTEEM</div>
+  <button class="nav-item" data-view="diagnostics"><span>⌁</span> Diagnostiek</button>
+  <button class="nav-item" data-view="logs"><span>≡</span> Logboeken</button>
+  <button class="nav-item" data-view="settings"><span>⚙</span> Instellingen</button>
+  <div class="sidebar-bottom"><i class="status-dot"></i><span>PS5 Linux verbonden</span><small id="last-update">Verbinding maken…</small></div>
+</aside>
+<main class="main">
+<header class="topbar"><div><div class="eyebrow">UBUNTU · AMD OBERON · VULKAN</div><h1 id="page-title">Overzicht</h1></div><div class="top-actions"><span class="live-pill"><i></i> LIVE</span><button id="refresh" class="icon-button" title="Vernieuwen">↻</button></div></header>
+
+<section id="view-overview" class="view active">
+ <div class="welcome"><div><div class="eyebrow">LOCAL AI WORKSTATION</div><h2>Welkom bij PS5 AI Studio</h2><p>Tekst, vision en beeldgeneratie op de PS5-hardware — lokaal uitgevoerd.</p></div><div class="welcome-chip"><i class="pulse"></i><span id="host-name">PS5 Linux</span></div></div>
+ <div class="section-heading"><div><h3>Systeemoverzicht</h3><p>Live metingen van Linux en AMDGPU</p></div><span class="muted" id="updated-at">—</span></div>
+ <div class="stat-grid">
+  <article class="stat-card"><div class="card-top"><span>RAM in gebruik</span><span>▤</span></div><strong id="ram-used">—</strong><div class="meter"><i id="ram-meter"></i></div><small id="ram-detail">—</small></article>
+  <article class="stat-card"><div class="card-top"><span>GPU GTT</span><span>◉</span></div><strong id="gtt-total">—</strong><div class="meter"><i id="gtt-meter"></i></div><small id="gtt-detail">—</small></article>
+  <article class="stat-card"><div class="card-top"><span>GPU-belasting</span><span>▧</span></div><strong id="gpu-busy">—</strong><div class="meter"><i id="gpu-meter"></i></div><small id="gpu-detail">AMD Radeon · Vulkan</small></article>
+  <article class="stat-card"><div class="card-top"><span>CPU-belasting</span><span>⌘</span></div><strong id="cpu-count">—</strong><div class="meter"><i id="cpu-meter"></i></div><small id="cpu-detail">—</small></article>
+ </div>
+ <div class="section-heading"><div><h3>AI-runtimes</h3><p>Runtime status en actief model</p></div></div>
+ <div class="runtime-grid">
+  <article class="runtime-card"><div class="runtime-head"><div class="runtime-logo">O</div><div><strong>Ollama</strong><small>API · :11434</small></div><span class="runtime-state" id="ollama-state">—</span></div><p>Lokale modellen en eenvoudige inference.</p></article>
+  <article class="runtime-card"><div class="runtime-head"><div class="runtime-logo llama">L</div><div><strong>llama.cpp</strong><small>GGUF · Vulkan</small></div><span class="runtime-state" id="llama-state">—</span></div><p id="text-runtime-label">Standalone tekst- en visionruntime.</p></article>
+  <article class="runtime-card"><div class="runtime-head"><div class="runtime-logo sd">✳</div><div><strong>Image runtime</strong><small>stable-diffusion.cpp</small></div><span class="runtime-state" id="sd-state">—</span></div><p id="image-runtime-label">Text-to-image, img2img en inpainting.</p></article>
+ </div>
+ <div class="quick-grid"><button class="quick-card" data-go="chat"><span>✦</span><b>Nieuwe chat</b><small>Start een lokaal gesprek</small></button><button class="quick-card" data-go="market"><span>⌕</span><b>Model zoeken</b><small>Doorzoek Hugging Face GGUF</small></button><button class="quick-card" data-go="images"><span>✳</span><b>Image Studio</b><small>Genereer of bewerk afbeeldingen</small></button></div>
+</section>
+
+<section id="view-chat" class="view">
+ <div class="chat-toolbar"><div><strong>AI Chat</strong><span id="chat-subtitle">Lokale inference op de PS5</span></div><div class="chat-pickers"><label><span>GESPREK</span><select id="chat-history"><option value="">Nieuw gesprek</option></select></label><label><span>BACKEND</span><select id="chat-backend"><option value="llama.cpp">llama.cpp</option><option value="ollama">Ollama</option></select></label><label><span>MODEL</span><select id="chat-model"><option value="">Selecteer model</option></select></label><button class="secondary-button" id="new-chat">Nieuwe chat</button><button class="secondary-button" id="export-chat">Exporteren</button><button class="secondary-button" id="delete-chat">Verwijderen</button></div></div>
+ <div id="chat-messages" class="chat-messages"><div class="chat-empty"><div class="empty-icon">✦</div><h3>Waar wil je aan werken?</h3><p>Gebruik een geladen GGUF-model of kies een Ollama-model.</p><div class="suggestions"><button data-prompt="Leg uit hoe de PS5 GPU en GTT samenwerken.">PS5 GPU uitleggen</button><button data-prompt="Help me met het analyseren van een technisch probleem.">Technisch probleem analyseren</button></div></div></div>
+ <form id="chat-form" class="chat-composer"><div class="chat-attachments"><label class="attach-button" title="Afbeelding toevoegen">＋<input id="chat-image" type="file" accept="image/png,image/jpeg,image/webp" hidden></label><label class="attach-button" title="Tekstbestand toevoegen">▤<input id="chat-files" type="file" accept=".txt,.md,.json,.csv,.log,.yaml,.yml,.xml,.py,.js,.ts,.html,.css" multiple hidden></label><span id="chat-image-name">Voeg afbeelding toe (vision-model vereist)</span><span id="chat-files-name"></span><button id="clear-chat-image" type="button" class="text-button" hidden>Afbeelding verwijderen</button><button id="clear-chat-files" type="button" class="text-button" hidden>Bestanden verwijderen</button></div><textarea id="chat-input" rows="2" placeholder="Bericht aan PS5 AI Studio…" maxlength="30000"></textarea><div class="composer-bottom"><span>Enter verzendt · Shift + Enter nieuwe regel</span><div><button id="stop-chat" type="button" class="secondary-button" hidden>Stop</button><button id="send-chat" type="submit">Versturen <span>↑</span></button></div></div></form>
+</section>
+
+<section id="view-models" class="view">
+ <div class="section-heading"><div><h3>Modellenbibliotheek</h3><p>Lokale GGUF-bestanden, Ollama-modellen en actieve runtime</p></div><button id="reload-models" class="secondary-button">Vernieuwen</button></div>
+ <div class="runtime-banner"><div><span class="eyebrow">LLAMA.CPP RUNTIME</span><strong id="text-active-model">Geen GGUF-model geladen</strong><small id="text-active-detail">Kies een model uit de bibliotheek om de standalone runtime te starten.</small></div><div class="runtime-actions"><span id="text-active-state" class="runtime-state">Gestopt</span><button id="unload-text" class="secondary-button" disabled>Ontladen</button></div></div>
+ <div class="panel model-load-panel"><div class="panel-heading"><div><h4>Laadinstellingen</h4><p>Context en geheugenconfiguratie voor de volgende modelsessie</p></div></div><div class="inline-controls"><label>Context<select id="load-context"><option>2048</option><option selected>4096</option><option>8192</option><option>16384</option><option>32768</option><option>65536</option></select></label><label>GPU-lagen<select id="load-gpu"><option value="all">Maximaal (all)</option><option value="auto">Automatisch</option><option value="0">CPU-only</option></select></label><label>KV-cache K<select id="load-k"><option>q8_0</option><option>f16</option><option>q4_0</option></select></label><label>KV-cache V<select id="load-v"><option>q8_0</option><option>f16</option><option>q4_0</option></select></label></div></div>
+ <div class="section-heading"><div><h3>Lokale GGUF-modellen</h3><p>Scant de PS5 AI Studio-map, ai-models en Hugging Face-cache</p></div></div><div id="local-models" class="models-grid"><div class="empty-state">Lokale modellen scannen…</div></div>
+ <div class="section-heading spaced"><div><h3>Ollama-bibliotheek</h3><p>Modellen die via de Ollama-service zijn geïnstalleerd</p></div></div><form id="ollama-pull-form" class="market-search"><input id="ollama-pull-name" placeholder="Modelnaam, bijvoorbeeld qwen3:8b of llama3.2-vision"><button type="submit">Ollama-model downloaden</button></form><div id="ollama-pull-status" class="muted"></div><div id="ollama-models" class="models-grid"><div class="empty-state">Ollama-modellen laden…</div></div>
+ <div class="notice"><span>ⓘ</span><div><strong>Tekst- en beeldmodellen gebruiken dezelfde GPU-geheugenpool.</strong><p>Bij het starten van een runtime wordt de andere runtime ontladen. Zo voorkomen we dat tekst- en diffusiegewichten tegelijk het beperkte PS5-geheugen bezetten.</p></div></div>
+</section>
+
+<section id="view-market" class="view">
+ <div class="section-heading"><div><h3>Modelwinkel</h3><p>Zoek GGUF-modellen op Hugging Face en download ze naar de PS5</p></div></div>
+ <form id="market-search" class="market-search"><input id="market-query" value="Qwen GGUF" placeholder="Zoek bijvoorbeeld Qwen, Gemma, Llama…"><button type="submit">Zoeken</button></form>
+ <div class="market-layout"><div class="panel market-repos"><div class="panel-heading"><div><h4>Repositories</h4><p>Meest gedownload</p></div></div><div id="market-repositories" class="market-list"><div class="empty-state">Zoek een model om te beginnen.</div></div></div><div class="panel market-files"><div class="panel-heading"><div><h4 id="market-files-title">Modelbestanden</h4><p id="market-files-subtitle">Selecteer een repository</p></div></div><div id="market-file-list" class="market-list"><div class="empty-state">Selecteer links een repository.</div></div></div></div>
+ <div class="panel queue-panel"><div class="panel-heading"><div><h4>Downloadwachtrij</h4><p>Onderbroken downloads kunnen hervatten vanaf het laatste deelbestand.</p></div><button id="refresh-queue" class="secondary-button">Vernieuwen</button></div><div id="download-queue" class="queue-list"><div class="empty-state">Geen downloads.</div></div></div>
+</section>
+
+<section id="view-images" class="view">
+ <div class="section-heading"><div><h3>Image Studio</h3><p>Text-to-image, image-to-image en masked inpainting via stable-diffusion.cpp</p></div><button id="reload-image-models" class="secondary-button">Vernieuwen</button></div>
+ <div class="runtime-banner"><div><span class="eyebrow">DIFFUSION RUNTIME</span><strong id="image-active-model">Geen beeldmodel geladen</strong><small id="image-active-detail">Kies een checkpoint om de aparte image runtime te starten.</small></div><div class="runtime-actions"><span id="image-active-state" class="runtime-state">Gestopt</span><button id="unload-image" class="secondary-button" disabled>Ontladen</button></div></div>
+ <div class="panel image-market-panel"><div class="panel-heading"><div><h4>Beeldmodellen zoeken</h4><p>Zoek checkpoints, VAE's, LoRA's en encoders op Hugging Face</p></div></div><form id="image-market-search" class="market-search"><input id="image-market-query" value="SDXL checkpoint safetensors" placeholder="Zoek bijvoorbeeld SDXL, Flux, LoRA…"><select id="image-market-category"><option value="checkpoints">Checkpoints</option><option value="vae">VAE</option><option value="loras">LoRA</option><option value="clip">Encoders</option><option value="controlnet">ControlNet</option></select><button type="submit">Zoeken</button></form><div id="image-market-results" class="market-list"><div class="empty-state">Zoek een beeldmodel om te beginnen.</div></div></div>
+ <div class="image-layout">
+  <div class="panel image-controls">
+   <div class="panel-heading"><div><h4>Generatie-instellingen</h4><p>Instellingen worden lokaal verwerkt</p></div></div>
+   <label class="field-label">Checkpoint<select id="image-model"><option value="">Selecteer checkpoint</option></select></label>
+   <label class="field-label">VAE<select id="image-vae"><option value="">Gebruik ingebouwde VAE</option></select></label>
+   <div class="field-grid"><label>LoRA<select id="image-lora"><option value="">Geen LoRA</option></select></label><label>LoRA-gewicht<input id="image-lora-weight" type="number" min="-2" max="2" step=".05" value="1"></label></div><div class="button-row"><button id="delete-image-asset" type="button" class="text-button" disabled>Geselecteerde VAE / LoRA verwijderen</button></div>
+   <div class="button-row"><button id="load-image" type="button" class="primary-button">Model laden</button><button id="delete-image-model" type="button" class="secondary-button" disabled>Verwijderen</button><span id="image-model-hint" class="muted">SDXL / compatibele modellen</span></div>
+   <label class="field-label">Prompt<textarea id="image-prompt" rows="4" placeholder="Beschrijf de afbeelding die je wilt maken…"></textarea></label>
+   <label class="field-label">Negative prompt<textarea id="image-negative" rows="2" placeholder="Wat moet worden vermeden?"></textarea></label>
+   <div class="field-grid"><label>Breedte<input id="image-width" type="number" min="256" max="2048" step="64" value="1024"></label><label>Hoogte<input id="image-height" type="number" min="256" max="2048" step="64" value="1024"></label><label>Steps<input id="image-steps" type="number" min="1" max="80" value="20"></label><label>CFG<input id="image-cfg" type="number" min="1" max="20" step=".5" value="7"></label><label>Seed<input id="image-seed" type="number" value="-1"></label><label>Denoise<input id="image-denoise" type="number" min="0" max="1" step=".05" value=".65"></label></div>
+   <div class="field-grid"><label>Sampler<select id="image-sampler"><option>euler_a</option><option>euler</option><option>dpm++2m</option><option>ddim_trailing</option><option>lcm</option><option>heun</option></select></label><label>Scheduler<select id="image-scheduler"><option>discrete</option><option>karras</option><option>exponential</option><option>ays</option><option>sgm_uniform</option></select></label></div>
+   <div class="source-upload"><div><b>Bronafbeelding</b><small>Voor img2img of inpainting</small></div><label class="secondary-button">Bestand kiezen<input id="source-image" type="file" accept="image/png,image/jpeg,image/webp" hidden></label></div>
+   <div id="source-preview-wrap" class="source-preview-wrap" hidden><img id="source-preview" alt="Bronafbeelding"><button id="remove-source" type="button" class="text-button">Bron verwijderen</button></div>
+   <div class="source-upload"><div><b>Inpainting-masker</b><small>Schilder wit over de delen die aangepast moeten worden</small></div><label class="secondary-button">Maskerbestand<input id="source-mask" type="file" accept="image/png,image/jpeg,image/webp" hidden></label></div>
+   <div id="mask-name" class="muted"></div>
+   <div id="mask-editor" class="mask-editor" hidden><div class="mask-tools"><label>Penseelgrootte <input id="mask-brush" type="range" min="5" max="120" value="35"></label><button id="clear-mask" type="button" class="secondary-button">Masker wissen</button></div><canvas id="mask-canvas"></canvas><small>Witte vlakken worden opnieuw gegenereerd; zwart blijft behouden.</small></div>
+   <div class="button-row generation-actions"><button id="generate-image" class="primary-button" type="button">✦ Genereren</button><button id="image-cancel" class="secondary-button" type="button" hidden>Stop generatie</button><button id="clear-image-prompt" class="secondary-button" type="button">Wissen</button></div>
+   <div id="generation-status" class="generation-status">Klaar om te genereren.</div><progress id="generation-progress" max="100" value="0" hidden></progress>
   </div>
-  <script type="module" src="/app.js"></script>
-</body>
-</html>
+  <div class="panel image-result-panel"><div class="panel-heading"><div><h4>Resultaat</h4><p>Afbeeldingen worden bewaard in je lokale galerij</p></div><button id="refresh-gallery" class="secondary-button">Galerij vernieuwen</button></div><div id="image-result" class="image-result"><div class="empty-state"><div class="empty-icon">✳</div><h3>Je creatie verschijnt hier</h3><p>Laad eerst een checkpoint en start een generatie.</p></div></div><div class="gallery-heading"><h4>Recente afbeeldingen</h4></div><div id="image-gallery" class="image-gallery"><div class="empty-state">Nog geen afbeeldingen.</div></div></div>
+ </div>
+ <div class="notice"><span>ⓘ</span><div><strong>Beeldgeneratie gebruikt de volledige GPU-geheugenpool.</strong><p>De tekst-runtime wordt automatisch gestopt wanneer je een beeldmodel laadt. Voor een terugkeer naar chat laad je het GGUF-model opnieuw.</p></div></div>
+</section>
+
+<section id="view-files" class="view">
+ <div class="section-heading"><div><h3>Bestandswerkruimte</h3><p>Veilige scratch-map voor chatbestanden en notities · geen shelltoegang</p></div><button id="refresh-files" class="secondary-button">Vernieuwen</button></div>
+ <div class="panel file-editor"><div class="field-grid"><label>Bestandsnaam<input id="file-name" placeholder="notities.md"></label><label>Inhoud<textarea id="file-content" rows="7" placeholder="Typ of bewerk de inhoud…"></textarea></label></div><div class="button-row"><button id="save-file" class="primary-button">Bestand opslaan</button><button id="clear-file" class="secondary-button">Leegmaken</button></div></div><div id="scratch-files" class="models-grid"></div>
+</section>
+
+<section id="view-diagnostics" class="view">
+ <div class="section-heading"><div><h3>Hardwarediagnostiek</h3><p>Linux-kernel, AMDGPU, geheugenpool en opslag</p></div><span id="diag-updated" class="muted">—</span></div>
+ <div class="diagnostic-grid">
+  <article class="panel"><h4>Processor</h4><div class="detail-row"><span>Model</span><b id="diag-cpu-model">—</b></div><div class="detail-row"><span>Threads</span><b id="diag-cpu-count">—</b></div><div class="detail-row"><span>Belasting</span><b id="diag-cpu-usage">—</b></div><div class="detail-row"><span>Kernel</span><b id="diag-kernel">—</b></div><div class="detail-row"><span>Uptime</span><b id="diag-uptime">—</b></div></article>
+  <article class="panel"><h4>Werkgeheugen</h4><div class="detail-row"><span>Totaal</span><b id="diag-ram-total">—</b></div><div class="detail-row"><span>Gebruikt</span><b id="diag-ram-used">—</b></div><div class="detail-row"><span>Beschikbaar</span><b id="diag-ram-free">—</b></div><div class="detail-row"><span>Swap vrij</span><b id="diag-swap">—</b></div></article>
+  <article class="panel"><h4>AMD GPU</h4><div class="detail-row"><span>GPU</span><b id="diag-gpu">—</b></div><div class="detail-row"><span>Dedicated VRAM</span><b id="diag-vram">—</b></div><div class="detail-row"><span>GTT totaal</span><b id="diag-gtt">—</b></div><div class="detail-row"><span>GTT gebruikt</span><b id="diag-gtt-used">—</b></div><div class="detail-row"><span>GPU busy</span><b id="diag-gpu-busy">—</b></div><div class="detail-row"><span>TTM page limit</span><b id="diag-ttm">—</b></div></article>
+ </div><div class="section-heading spaced"><div><h3>Temperaturen</h3><p>Sensoren die door de Linux-kernel beschikbaar worden gesteld</p></div></div><div id="temperature-list" class="models-grid"></div><div class="section-heading spaced"><div><h3>Opslag</h3><p>Beschikbare bestandssystemen</p></div></div><div id="disk-list" class="models-grid"></div>
+</section>
+
+<section id="view-logs" class="view">
+ <div class="section-heading"><div><h3>Logboeken</h3><p>Applicatie, llama.cpp, stable-diffusion.cpp</p></div><button id="refresh-logs" class="secondary-button">Vernieuwen</button></div>
+ <div class="log-tabs"><button class="active" data-log="app">Applicatie</button><button data-log="text">llama.cpp</button><button data-log="image">Image runtime</button></div><pre id="log-output" class="log-output">Logboeken laden…</pre>
+</section>
+
+<section id="view-settings" class="view">
+ <div class="section-heading"><div><h3>Instellingen</h3><p>Runtime, geheugen, opslag en Image Studio</p></div></div>
+ <form id="settings-form" class="settings-grid">
+  <article class="panel"><h4>Tekstmodellen</h4><label class="field-label">Standaard backend<select id="setting-backend"><option value="llama.cpp">llama.cpp</option><option value="ollama">Ollama</option></select></label><label class="field-label">Contextlimiet<input id="setting-context" type="number" min="512" max="65536" step="512"></label><label class="field-label">CPU-threads<input id="setting-threads" type="number" min="1" max="16"></label><label class="field-label">GPU-lagen<select id="setting-gpu"><option value="all">all</option><option value="auto">auto</option><option value="0">0 · CPU</option></select></label><label class="field-label">KV-cache K<select id="setting-k"><option>q8_0</option><option>f16</option><option>q4_0</option></select></label><label class="field-label">KV-cache V<select id="setting-v"><option>q8_0</option><option>f16</option><option>q4_0</option></select></label></article>
+  <article class="panel"><h4>Image Studio</h4><label class="field-label">Runtimepoort<input id="setting-image-port" type="number" min="1024" max="65535"></label><label class="field-label">CPU-threads<input id="setting-image-threads" type="number" min="1" max="16"></label><label class="field-label">Backend assignment<input id="setting-image-backend" value="diffusion=Vulkan0,te=cpu,vae=cpu"></label><label class="field-label">Standaardbreedte<input id="setting-image-width" type="number"></label><label class="field-label">Standaardhoogte<input id="setting-image-height" type="number"></label><label class="field-label">Stappen<input id="setting-image-steps" type="number"></label><label class="field-label">CFG<input id="setting-image-cfg" type="number" step=".5"></label><label class="field-label">Sampler<input id="setting-image-sampler" type="text"></label><label class="field-label">Scheduler<input id="setting-image-scheduler" type="text"></label></article>
+  <article class="panel"><h4>Opslag en gedrag</h4><label class="field-label">Downloadmap<input id="setting-download" type="text"></label><label class="field-label">Scratch-limiet (GiB)<input id="setting-scratch" type="number" min="1" max="100"></label><label class="check-row"><input id="setting-autoload" type="checkbox"> Standaardmodel automatisch laden bij starten</label><label class="field-label">Standaardmodel (volledig pad)<input id="setting-default-model" type="text"></label><p class="muted">Downloads gebruiken een hervatbare wachtrij. Alleen toegestane modelmappen worden als downloadbestemming geaccepteerd.</p></article>
+  <div class="settings-footer"><button class="primary-button" type="submit">Instellingen opslaan</button><span id="settings-status" class="muted"></span></div>
+ </form>
+</section>
+</main>
+</div>
+<div id="toast" class="toast" role="status"></div>
+<script src="/app.js"></script>
+</body></html>

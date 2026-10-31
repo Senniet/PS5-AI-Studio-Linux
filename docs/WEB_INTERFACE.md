@@ -1,65 +1,104 @@
-# Linux web interface
+# Linux Web Interface and Runtime
 
-The Linux-only web UI is served by a small dependency-free Node.js service.
+Last updated: 2026-10-31
 
-## Network access
+## Separation from native PS5 app
 
-The service listens on `0.0.0.0:8787`, so it accepts IPv4 connections on all host interfaces. On the current PS5 Linux host (`192.168.2.210/24`), open:
+This is the Linux edition booted by PS5 Linux Loader. Do not edit or deploy the native Prospero project while working here. The Linux application runs in Ubuntu and uses Node.js, Ollama, llama.cpp, stable-diffusion.cpp and Vulkan/RADV.
 
-`http://192.168.2.210:8787`
+## Services
 
-The browser prompts for HTTP Basic Authentication:
-- Username: `admin`
-- Password: stored privately on the host in `~/.config/ps5-ai-studio-linux/auth.env`
+- Node server: apps/server/server.mjs
+- Frontend: apps/web/index.html, apps/web/app.js, apps/web/styles.css
+- Web bind: 0.0.0.0:8787
+- Basic Auth credentials: ~/.config/ps5-ai-studio-linux/auth.env
+- systemd user service: ps5-ai-studio-linux.service
+- Ollama API: existing LAN bind on port 11434 (intentionally unchanged)
+- llama.cpp server: localhost port 8081
+- stable-diffusion.cpp server: localhost port 1234 (configurable)
 
-The credential file is mode 0600 in a mode 0700 directory and is not committed to Git. Configure a unique password of at least 24 characters. The service rejects startup when the password is missing or too short.
+All web UI and application API routes require Basic Auth. The Ollama API is separate and has no authentication; it remains reachable on the trusted LAN at the user's explicit request. Do not expose it to the internet.
 
-**Network security:** this development service uses HTTP, so Basic Authentication credentials and chat traffic are not encrypted in transit. Use it only on a trusted private LAN. Do not configure router port forwarding or expose port 8787 directly to the public internet. For remote access, use a VPN or put a TLS-terminating authenticated reverse proxy in front. The host currently has no UFW or nftables command installed; verify any upstream VLAN/router rules separately.
+## Frontend sections
 
-Ollama is a separate service. Its current systemd override sets `OLLAMA_HOST=0.0.0.0:11434`, which exposes the Ollama API independently of this web login. Do not assume the web UI's Basic Auth protects port 11434. Review whether other LAN clients rely on that direct Ollama access before changing it.
+1. Overview: RAM, GTT, GPU busy, CPU load, runtime state.
+2. AI Chat: Ollama/llama.cpp selection, streaming, vision image input, text-file attachments, saved conversations, delete and Markdown export.
+3. Model Library: local GGUF metadata, KV-cache estimate, context-aware memory estimate, GPU layer selection, mmproj pairing, load/unload/delete, Ollama model list/pull/delete.
+4. Model Market: Hugging Face GGUF search, file listing, download queue, pause/resume, SHA-256 validation.
+5. Image Studio: image checkpoint market, VAE and LoRA library, load/unload, txt2img, img2img, brush-painted or file-provided inpainting mask, progress/interrupt, local gallery.
+6. Files: bounded scratch workspace for text and notes.
+7. Diagnostics: CPU, RAM, swap, AMDGPU VRAM/GTT, TTM page limit, temperatures, storage and runtime status.
+8. Logs and Settings.
 
-## Text model library
+## Model handling
 
-- List local Ollama models with size, family, quantization and loaded state.
-- Download from the Ollama library with streamed per-layer progress.
-- Cancel a download; Ollama documents that cancelled pulls resume from their previous progress on the next pull request.
-- Delete a local model after confirmation; deleting a currently loaded model is blocked until it is stopped.
-- Non-streaming local chat through Ollama.
+### GGUF
+The GGUF header parser reads architecture, parameter count, block count, embedding length, attention heads, KV heads, key/value head dimensions and context length when available. KV cache is estimated from the selected context and cache type. The planner compares estimated model weights + KV cache + runtime overhead with available system memory and remaining GTT.
 
-## Image model library
+The auto GPU-layer mode estimates a safe number of layers from remaining GTT. All and CPU-only remain available. A model can be paired with a sibling mmproj*.gguf; if more than one projector exists, the model card exposes a manual selector.
 
-Image checkpoints are scanned in:
+### Hugging Face downloads
+The download queue:
+- accepts only GGUF for text models;
+- uses category-specific directories and extensions for image assets;
+- supports pause and resume using .part files and HTTP Range requests;
+- checks known file size and SHA-256 when the repository provides it;
+- persists queue state across service restarts.
 
-`~/.local/share/ps5-ai-studio/models/image/checkpoints`
+### Runtime exclusivity
+The app stops the other GPU-heavy runtime before starting a text or image runtime. Ollama models are unloaded before standalone llama.cpp or stable-diffusion.cpp starts. Starting an Ollama chat stops the standalone text and image runtimes first.
 
-The scanner currently recognizes `.safetensors`, `.ckpt` and `.gguf` files and displays their sizes and modification dates. Separate directories are prepared for VAE, CLIP and LoRA assets. No image checkpoint was present on the PS5 during the 2026-10-31 scan, so image generation is not yet enabled or tested. The built `stable-diffusion.cpp` server supports local API routes for txt2img and img2img; integration follows after a compatible checkpoint is available.
+## Image pipeline
 
-## Security and service
+The server invokes stable-diffusion.cpp on localhost with the configured Vulkan backend. It waits for the SD API to become ready before reporting the model loaded.
 
-- Basic Authentication on all routes.
-- Bounded JSON body parsing, request timeouts and header limits.
-- Static path traversal protection.
-- Systemd user service with a private environment file.
+- txt2img: /sdapi/v1/txt2img
+- img2img: /sdapi/v1/img2img
+- progress: /sdapi/v1/progress
+- interrupt: /sdapi/v1/interrupt
+- options: /sdapi/v1/options, samplers and schedulers
 
-Create `~/.config/ps5-ai-studio-linux/auth.env` with:
+Generated images are written to ~/.local/share/ps5-ai-studio/outputs/images. The browser gallery serves only files from this output directory. Inpainting uses a black mask canvas with white painted regions.
 
-```ini
-WEB_USER=admin
-WEB_PASSWORD=use-a-long-random-secret-of-at-least-24-characters
-```
+## API surface
 
-Protect it:
+- GET /api/health
+- GET /api/diagnostics
+- GET /api/runtime
+- GET|POST /api/settings
+- GET /api/models?context=...
+- POST /api/models/delete
+- POST /api/runtime/text/load|unload
+- POST /api/runtime/image/load|unload
+- GET /api/market/search, GET /api/market/files, POST /api/market/download, POST /api/market/action
+- GET /api/market/image-search
+- GET /api/market/queue
+- POST /api/ollama/pull|delete
+- POST /api/chat (streaming NDJSON for Ollama or SSE for llama.cpp)
+- GET|POST|DELETE /api/conversations
+- GET|POST|DELETE /api/files
+- GET /api/image/models, POST /api/image/models/delete
+- POST /api/image/generate, POST /api/image/cancel, GET /api/image/progress, GET /api/image/options
+- GET /api/gallery and authenticated /gallery/<filename> output delivery
+- GET /api/logs
 
-```bash
-chmod 700 ~/.config/ps5-ai-studio-linux
-chmod 600 ~/.config/ps5-ai-studio-linux/auth.env
-```
+## Security and boundaries
 
-Then reload and restart the user service:
+- Basic Auth is required for the web UI and API.
+- Basic Auth over plain HTTP is not encryption. Use only on a trusted LAN.
+- Ollama port 11434 is intentionally left as the existing unauthenticated LAN API at the user's request.
+- The web server exposes no arbitrary shell or arbitrary filesystem API.
+- Model paths must originate from the local model scanners; image assets are limited to the dedicated model directories.
+- Scratch file names are constrained and storage has a configured cap.
+- The gallery only reads generated image output files.
+- Never port-forward the web UI or Ollama API to the public internet.
 
-```bash
-systemctl --user daemon-reload
-systemctl --user restart ps5-ai-studio-linux.service
-```
+## Validation status
 
-The service remains separate from the native Prospero application.
+- Node syntax checks: passed during implementation.
+- HTML-to-JavaScript ID reference check: passed (no missing or duplicate IDs).
+- Authenticated API smoke tests: passed for health, diagnostics, models, image model scan, conversations CRUD and scratch-file CRUD.
+- Hugging Face search and file listing: tested for a GGUF repository and an SDXL repository.
+- Ollama streaming chat: tested with qwen3:8b-16k; model unloaded after the test.
+- GGUF header parser: validated against a synthetic GGUF header fixture; fixture removed afterward.
+- Image generation itself: not yet tested because no local image checkpoint is installed.

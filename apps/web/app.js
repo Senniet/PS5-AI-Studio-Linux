@@ -1,333 +1,88 @@
-const $ = (id) => document.getElementById(id);
-const fmt = (bytes) => bytes == null ? "—" : `${(bytes / 1073741824).toFixed(2)} GiB`;
-const pct = (used, total) => total > 0 ? Math.max(0, Math.min(100, used / total * 100)) : 0;
-const setMeter = (id, value) => { const el = $(id); if (el) el.style.width = `${value}%`; };
-const status = (id, running, installed) => {
-  const el = $(id);
-  el.textContent = running ? "Actief" : installed ? "Beschikbaar" : "Niet gevonden";
-  el.className = `runtime-state ${running ? "is-running" : installed ? "is-ready" : "is-missing"}`;
-};
-let models = [];
-let messages = [];
-let busy = false;
-function uptime(seconds) {
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor(seconds % 86400 / 3600);
-  return days ? `${days} d ${hours} u` : `${hours} uur`;
-}
-async function refresh() {
-  $("refresh").classList.add("spinning");
-  try {
-    const response = await fetch("/api/diagnostics", { cache: "no-store" });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const d = await response.json();
-    $("host-name").textContent = d.host.hostname;
-    $("kernel").textContent = d.host.release;
-    $("os-detail").textContent = `${d.host.platform} · ${d.host.cpus} threads`;
-    $("cpu-count").textContent = `${d.host.cpus} threads`;
-    $("cpu-detail").textContent = d.host.cpuModel;
-    $("ram-used").textContent = fmt(d.memory.used);
-    $("ram-detail").textContent = `${fmt(d.memory.available)} beschikbaar van ${fmt(d.memory.total)}`;
-    setMeter("ram-meter", pct(d.memory.used, d.memory.total));
-    $("gtt-total").textContent = fmt(d.gpu.gtt);
-    $("gtt-detail").textContent = `${fmt(d.gpu.gttUsed)} in gebruik · ${fmt(d.gpu.vram)} VRAM`;
-    setMeter("gtt-meter", pct(d.gpu.gttUsed, d.gpu.gtt));
-    status("ollama-state", d.runtimes.ollama.running, d.runtimes.ollama.installed);
-    status("llama-state", d.runtimes.llamaCpp.running, d.runtimes.llamaCpp.installed);
-    status("sd-state", d.runtimes.stableDiffusion.running, d.runtimes.stableDiffusion.installed);
-    $("diag-cpu-model").textContent = d.host.cpuModel;
-    $("diag-cpu-count").textContent = d.host.cpus;
-    $("diag-kernel").textContent = d.host.release;
-    $("diag-uptime").textContent = uptime(d.host.uptime);
-    $("diag-ram-total").textContent = fmt(d.memory.total);
-    $("diag-ram-used").textContent = fmt(d.memory.used);
-    $("diag-ram-free").textContent = fmt(d.memory.available);
-    $("diag-swap").textContent = fmt(d.memory.swapFree);
-    $("diag-gpu").textContent = d.gpu.name;
-    $("diag-vram").textContent = fmt(d.gpu.vram);
-    $("diag-gtt").textContent = fmt(d.gpu.gtt);
-    $("diag-gtt-used").textContent = fmt(d.gpu.gttUsed);
-    $("diag-ttm").textContent = d.gpu.ttmPages?.toLocaleString("nl-NL") ?? "—";
-    $("diag-pool").textContent = d.gpu.pagePool?.toLocaleString("nl-NL") ?? "—";
-    const time = new Date(d.timestamp).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    $("updated-at").textContent = `Bijgewerkt om ${time}`;
-    $("last-update").textContent = `Laatst bijgewerkt ${time}`;
-  } catch (error) {
-    $("last-update").textContent = "Verbinding mislukt";
-    console.error("Diagnostics refresh failed:", error);
-  } finally {
-    $("refresh").classList.remove("spinning");
-  }
-}
-async function loadModels() {
-  const grid = $("models-grid");
-  try {
-    const response = await fetch("/api/models", { cache: "no-store" });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-    models = data.models || [];
-    const select = $("chat-model");
-    const previous = select.value;
-    select.replaceChildren();
-    for (const model of models) {
-      const option = document.createElement("option");
-      option.value = model.name;
-      option.textContent = model.name;
-      select.append(option);
-    }
-    if (models.some((model) => model.name === previous)) select.value = previous;
-    grid.replaceChildren();
-    if (!models.length) {
-      const empty = document.createElement("div");
-      empty.className = "empty-state";
-      empty.textContent = "Geen Ollama-modellen gevonden. Download hierboven een model.";
-      grid.append(empty);
-      return;
-    }
-    for (const model of models) {
-      const card = document.createElement("article");
-      card.className = "model-card";
-      const head = document.createElement("div");
-      head.className = "model-card-head";
-      const title = document.createElement("strong");
-      title.textContent = model.name;
-      const state = document.createElement("span");
-      state.className = `model-running ${model.running ? "is-running" : ""}`;
-      state.textContent = model.running ? "In gebruik" : "Op schijf";
-      head.append(title, state);
-      const meta = document.createElement("p");
-      meta.textContent = `${model.parameters} parameters · ${model.quantization} · ${fmt(model.size)}`;
-      const footer = document.createElement("div");
-      footer.className = "model-card-footer";
-      const family = document.createElement("span");
-      family.className = "model-family";
-      family.textContent = model.family;
-      const remove = document.createElement("button");
-      remove.type = "button";
-      remove.className = "delete-model";
-      remove.textContent = "Verwijderen";
-      remove.disabled = model.running;
-      remove.title = model.running ? "Stop het model eerst in Ollama" : "Verwijder dit model van de schijf";
-      remove.addEventListener("click", () => deleteModel(model.name));
-      footer.append(family, remove);
-      card.append(head, meta, footer);
-      grid.append(card);
-    }
-  } catch (error) {
-    grid.replaceChildren();
-    const message = document.createElement("div");
-    message.className = "empty-state";
-    message.textContent = `Modellen niet beschikbaar: ${error.message}`;
-    grid.append(message);
-  }
-}
-let pullController = null;
-function setPullProgress(status, percent, size) {
-  $("pull-progress-wrap").hidden = false;
-  $("pull-status").textContent = status;
-  $("pull-percent").textContent = percent == null ? "—" : `${Math.round(percent)}%`;
-  $("pull-progress").value = percent ?? 0;
-  $("pull-size").textContent = size || " ";
-}
-async function pullModel(event) {
-  event.preventDefault();
-  if (pullController) return;
-  const name = $("model-name").value.trim();
-  if (!name) return;
-  pullController = new AbortController();
-  $("pull-model").disabled = true;
-  $("cancel-pull").hidden = false;
-  $("model-name").disabled = true;
-  setPullProgress("Download starten…", 0, "Ollama kan een onderbroken download later hervatten.");
-  try {
-    const response = await fetch("/api/models/pull", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-      signal: pullController.signal
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || `HTTP ${response.status}`);
-    }
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        const item = JSON.parse(line);
-        const percent = item.total > 0 ? item.completed / item.total * 100 : null;
-        const size = item.total > 0 ? `${fmt(item.completed)} / ${fmt(item.total)}` : "";
-        setPullProgress(item.status || "Downloaden…", percent, size);
-        if (item.error) throw new Error(item.error);
-      }
-    }
-    if (buffer.trim()) {
-      const item = JSON.parse(buffer);
-      if (item.error) throw new Error(item.error);
-      setPullProgress(item.status || "Download voltooid", 100, "Model is beschikbaar.");
-    }
-    $("model-name").value = "";
-    setPullProgress("Download voltooid", 100, "Model staat in je lokale bibliotheek.");
-    await loadModels();
-  } catch (error) {
-    if (error.name === "AbortError") {
-      setPullProgress("Download onderbroken", null, "Ollama bewaart voortgang en hervat bij een volgende poging.");
-    } else {
-      setPullProgress(`Download mislukt: ${error.message}`, null, "");
-    }
-  } finally {
-    pullController = null;
-    $("pull-model").disabled = false;
-    $("cancel-pull").hidden = true;
-    $("model-name").disabled = false;
-  }
-}
-async function deleteModel(name) {
-  if (!confirm(`Weet je zeker dat je model "${name}" volledig van de PS5 wilt verwijderen? Dit verwijdert de lokale modelbestanden.`)) return;
-  try {
-    const response = await fetch("/api/models", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name })
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-    await loadModels();
-  } catch (error) {
-    alert(`Model verwijderen is niet gelukt: ${error.message}`);
-  }
-}
-async function loadImageModels() {
-  const grid = $("image-models-grid");
-  try {
-    const response = await fetch("/api/image/models", { cache: "no-store" });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-    $("image-model-directory").textContent = data.directory;
-    grid.replaceChildren();
-    if (!data.models?.length) {
-      const empty = document.createElement("div");
-      empty.className = "empty-state";
-      const icon = document.createElement("div");
-      icon.className = "empty-icon";
-      icon.textContent = "✳";
-      const title = document.createElement("h3");
-      title.textContent = "Nog geen beeldcheckpoint gevonden";
-      const text = document.createElement("p");
-      text.textContent = "Zet een SDXL .safetensors- of .ckpt-bestand in de checkpointmap om de image-engine te kunnen configureren.";
-      empty.append(icon, title, text);
-      grid.append(empty);
-      return;
-    }
-    for (const model of data.models) {
-      const card = document.createElement("article");
-      card.className = "model-card";
-      const title = document.createElement("strong");
-      title.textContent = model.name;
-      const meta = document.createElement("p");
-      meta.textContent = `${model.format.toUpperCase()} · ${fmt(model.size)} · gewijzigd ${new Date(model.modified).toLocaleDateString("nl-NL")}`;
-      const location = document.createElement("code");
-      location.className = "image-model-path";
-      location.textContent = model.path;
-      card.append(title, meta, location);
-      grid.append(card);
-    }
-  } catch (error) {
-    grid.replaceChildren();
-    const message = document.createElement("div");
-    message.className = "empty-state";
-    message.textContent = `Beeldmodellen niet beschikbaar: ${error.message}`;
-    grid.append(message);
-  }
-}
-function renderMessages() {
-  const container = $("chat-messages");
-  container.replaceChildren();
-  if (!messages.length) {
-    const empty = document.createElement("div");
-    empty.className = "chat-empty";
-    const icon = document.createElement("div");
-    icon.className = "empty-icon";
-    icon.textContent = "✦";
-    const title = document.createElement("h3");
-    title.textContent = "Waar kan ik je mee helpen?";
-    const text = document.createElement("p");
-    text.textContent = "Je berichten blijven op deze Linux-host en worden verwerkt door het geselecteerde lokale model.";
-    empty.append(icon, title, text);
-    container.append(empty);
-    return;
-  }
-  for (const message of messages) {
-    const row = document.createElement("div");
-    row.className = `chat-message ${message.role}`;
-    const label = document.createElement("span");
-    label.className = "message-label";
-    label.textContent = message.role === "user" ? "JIJ" : "AI";
-    const body = document.createElement("div");
-    body.className = "message-content";
-    body.textContent = message.content;
-    row.append(label, body);
-    container.append(row);
-  }
-  container.scrollTop = container.scrollHeight;
-}
-async function sendMessage(event) {
-  event.preventDefault();
-  if (busy) return;
-  const input = $("chat-input");
-  const content = input.value.trim();
-  const model = $("chat-model").value;
-  if (!content || !model) return;
-  messages.push({ role: "user", content });
-  input.value = "";
-  renderMessages();
-  busy = true;
-  $("send-chat").disabled = true;
-  $("send-chat").textContent = "Bezig…";
-  try {
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model, messages: messages.slice(-24) })
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-    messages.push({ role: "assistant", content: data.message?.content || "(Leeg antwoord)" });
-  } catch (error) {
-    messages.push({ role: "assistant", content: `Fout: ${error.message}` });
-  } finally {
-    busy = false;
-    $("send-chat").disabled = false;
-    $("send-chat").innerHTML = 'Versturen <span>↑</span>';
-    renderMessages();
-    input.focus();
-  }
-}
-document.querySelectorAll(".nav-item").forEach((button) => button.addEventListener("click", () => {
-  document.querySelectorAll(".nav-item").forEach((item) => item.classList.toggle("active", item === button));
-  document.querySelectorAll(".view").forEach((view) => view.classList.toggle("active", view.id === `view-${button.dataset.view}`));
-  $("page-title").textContent = button.textContent.trim();
-}));
-$("refresh").addEventListener("click", refresh);
-$("reload-models").addEventListener("click", loadModels);
-$("reload-image-models").addEventListener("click", loadImageModels);
-$("model-pull-form").addEventListener("submit", pullModel);
-$("cancel-pull").addEventListener("click", () => pullController?.abort());
-$("chat-form").addEventListener("submit", sendMessage);
-$("chat-input").addEventListener("keydown", (event) => {
-  if (event.key === "Enter" && !event.shiftKey) {
-    event.preventDefault();
-    $("chat-form").requestSubmit();
-  }
-});
-refresh();
-loadModels();
-loadImageModels();
-setInterval(refresh, 60000);
+const $=id=>document.getElementById(id);
+const fmt=n=>n==null?"—":(n/1073741824).toFixed(2)+" GiB";
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pct=(a,b)=>b>0?Math.max(0,Math.min(100,a/b*100)):0;
+function newId(){return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==="x"?r:(r&3|8)).toString(16);});}
+let currentView="overview",localModels=[],ollamaModels=[],imageModels=[],imageCatalog={},messages=[],chatController=null,chatImage=null,chatFiles=[],sourceImage=null,sourceMask=null,selectedRepo="",selectedImageRepo="",conversationId=newId(),logTab="app",toastTimer=null;
+async function api(url,opts={}){const r=await fetch(url,{cache:"no-store",...opts});const type=r.headers.get("content-type")||"";if(!r.ok){let e={};try{e=await r.json();}catch{}throw Error(e.error||("HTTP "+r.status));}return type.includes("json")?r.json():r;}
+function post(url,data){return api(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});}
+function toast(s){$("toast").textContent=s;$("toast").classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>$("toast").classList.remove("show"),3200);}
+function go(view){currentView=view;document.querySelectorAll(".view").forEach(x=>x.classList.toggle("active",x.id==="view-"+view));document.querySelectorAll(".nav-item").forEach(x=>x.classList.toggle("active",x.dataset.view===view));$("page-title").textContent=({overview:"Overzicht",chat:"AI Chat",models:"Modellenbibliotheek",market:"Modelwinkel",images:"Image Studio",files:"Bestanden",diagnostics:"Diagnostiek",logs:"Logboeken",settings:"Instellingen"})[view]||view;if(view==="models")loadModels();if(view==="chat")loadConversations();if(view==="market"){loadQueue();}if(view==="images"){loadImageModels();loadGallery();loadRuntime();}if(view==="files")loadFiles();if(view==="logs")loadLogs();if(view==="settings")loadSettings();if(view==="diagnostics")refresh();}
+document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.view)));
+document.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.go)));
+function meter(id,v){const e=$(id);if(e)e.style.width=v+"%";}
+function state(id,active,installed=true){const e=$(id);if(!e)return;e.textContent=active?"Actief":installed?"Beschikbaar":"Niet gevonden";e.className="runtime-state "+(active?"is-running":installed?"is-ready":"is-missing");}
+function uptime(s){const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);return d?d+" d "+h+" u":h+" u "+m+" m";}
+async function refresh(){try{const d=await api("/api/diagnostics");$("host-name").textContent=d.host.hostname;$("ram-used").textContent=fmt(d.memory.used);$("ram-detail").textContent=fmt(d.memory.available)+" beschikbaar van "+fmt(d.memory.total);meter("ram-meter",pct(d.memory.used,d.memory.total));$("gtt-total").textContent=fmt(d.gpu.gtt);$("gtt-detail").textContent=fmt(d.gpu.gttUsed)+" in gebruik · "+fmt(d.gpu.vram)+" VRAM";meter("gtt-meter",pct(d.gpu.gttUsed,d.gpu.gtt));$("gpu-busy").textContent=d.gpu.busy==null?"—":d.gpu.busy+"%";$("gpu-detail").textContent=d.gpu.name;meter("gpu-meter",d.gpu.busy||0);$("cpu-count").textContent=d.host.cpuUsage==null?d.host.cpus+" threads":d.host.cpuUsage+"%";meter("cpu-meter",d.host.cpuUsage||0);$("cpu-detail").textContent=d.host.cpuModel+" · "+d.host.cpus+" threads";$("updated-at").textContent=new Date(d.timestamp).toLocaleTimeString("nl-NL");$("last-update").textContent="Bijgewerkt "+new Date(d.timestamp).toLocaleTimeString("nl-NL");state("ollama-state",d.runtimes.ollama.running,d.runtimes.ollama.installed);state("llama-state",d.runtimes.text==="running"||d.runtimes.text==="starting",true);state("sd-state",d.runtimes.image==="running"||d.runtimes.image==="starting",true);
+$("diag-cpu-model").textContent=d.host.cpuModel;$("diag-cpu-count").textContent=d.host.cpus;$("diag-cpu-usage").textContent=d.host.cpuUsage==null?"—":d.host.cpuUsage+"%";$("diag-kernel").textContent=d.host.release;$("diag-uptime").textContent=uptime(d.host.uptime);$("diag-ram-total").textContent=fmt(d.memory.total);$("diag-ram-used").textContent=fmt(d.memory.used);$("diag-ram-free").textContent=fmt(d.memory.available);$("diag-swap").textContent=fmt(d.memory.swapFree);$("diag-gpu").textContent=d.gpu.name;$("diag-vram").textContent=fmt(d.gpu.vram);$("diag-gtt").textContent=fmt(d.gpu.gtt);$("diag-gtt-used").textContent=fmt(d.gpu.gttUsed);$("diag-gpu-busy").textContent=d.gpu.busy==null?"—":d.gpu.busy+"%";$("diag-ttm").textContent=d.gpu.ttm==null?"—":Number(d.gpu.ttm).toLocaleString("nl-NL")+" pages";$("diag-updated").textContent="Bijgewerkt "+new Date(d.timestamp).toLocaleTimeString("nl-NL");$("temperature-list").innerHTML=(d.temperatures||[]).map(x=>'<article class="model-card"><b>'+esc(x.name)+'</b><p>'+Number(x.temperature).toFixed(1)+' °C</p></article>').join("")||'<div class="empty-state">Geen temperatuursensoren beschikbaar via hwmon.</div>';$("disk-list").innerHTML=(d.disks||[]).map(x=>'<article class="model-card"><b>'+esc(x.path)+'</b><p>'+fmt(x.free)+' vrij van '+fmt(x.total)+'</p><div class="meter"><i style="width:'+pct(x.used,x.total)+'%"></i></div></article>').join("");}catch(e){$("last-update").textContent="Verbinding mislukt";console.error(e);}}
+async function loadRuntime(){try{const r=await api("/api/runtime");const t=r.text,i=r.image;$("text-active-model").textContent=t.model?t.model.split("/").pop():"Geen GGUF-model geladen";$("text-active-detail").textContent=t.mmproj?"Vision-projector: "+t.mmproj.split("/").pop():"llama.cpp · "+t.state;$("text-active-state").textContent=t.state;$("unload-text").disabled=!t.model;$("image-active-model").textContent=i.model?i.model.split("/").pop():"Geen beeldmodel geladen";$("image-active-detail").textContent="stable-diffusion.cpp · "+i.state;$("image-active-state").textContent=i.state;$("unload-image").disabled=!i.model;}catch(e){console.warn(e);}}
+function renderLocal(){const root=$("local-models");if(!localModels.length){root.innerHTML='<div class="empty-state">Geen lokale GGUF-bestanden gevonden. Download modellen via de Modelwinkel.</div>';return;}root.innerHTML=localModels.map((m,i)=>'<article class="model-card"><div class="model-card-head"><strong>'+esc(m.name)+'</strong><span class="model-running">'+fmt(m.size)+'</span></div><p>'+esc(m.path)+'</p><p>'+esc(m.meta?.architecture||"GGUF")+(m.meta?.layers?" · "+m.meta.layers+" lagen":"")+(m.meta?.parameters?" · "+Number(m.meta.parameters).toLocaleString("nl-NL")+" parameters":"")+(m.meta?.context?" · max ctx "+Number(m.meta.context).toLocaleString("nl-NL"):"")+'</p>'+(m.mmprojCandidates?.length?'<label class="mmproj-row">Visionprojector<select data-mmproj="'+i+'"><option value="">Automatisch</option><option value="none">Geen mmproj</option>'+m.mmprojCandidates.map(x=>'<option value="'+esc(x.path)+'">'+esc(x.name)+'</option>').join("")+'</select></label>':'')+'<div class="plan-row"><span class="fit '+esc(m.plan.fit)+'">'+esc(m.plan.fit==="likely"?"Past waarschijnlijk":m.plan.fit==="tight"?"CPU/GPU-mix":"Waarschijnlijk te groot")+'</span><small>ctx '+$("load-context").value+' · schatting '+fmt(m.plan.required)+'</small></div><div class="model-card-footer"><button class="text-button" data-delete-local="'+i+'">Verwijderen</button><button class="primary-button" data-load-local="'+i+'">Laden</button></div></article>').join("");root.querySelectorAll("[data-load-local]").forEach(b=>b.addEventListener("click",()=>{const i=Number(b.dataset.loadLocal),s=root.querySelector('[data-mmproj="'+i+'"]');loadTextModel(localModels[i],s?s.value:undefined);}));root.querySelectorAll("[data-delete-local]").forEach(b=>b.addEventListener("click",async()=>{const m=localModels[Number(b.dataset.deleteLocal)];if(!confirm("Verwijder "+m.name+" definitief van de schijf?"))return;try{await post("/api/models/delete",{path:m.path});toast("Model verwijderd");loadModels();}catch(e){toast(e.message);}}));}
+function renderOllama(){const root=$("ollama-models");if(!ollamaModels.length){root.innerHTML='<div class="empty-state">Geen Ollama-modellen beschikbaar.</div>';return;}root.innerHTML=ollamaModels.map((m,i)=>'<article class="model-card"><div class="model-card-head"><strong>'+esc(m.name)+'</strong><span class="model-running">'+(m.running?"In gebruik":"Op schijf")+'</span></div><p>'+esc(m.parameters||"—")+' parameters · '+esc(m.quantization||"—")+' · '+fmt(m.size)+'</p><div class="model-card-footer"><button class="text-button" data-delete-ollama="'+i+'" '+(m.running?"disabled":"")+'>Verwijderen</button><button class="secondary-button" data-chat-ollama="'+i+'">Chat openen</button></div></article>').join("");root.querySelectorAll("[data-chat-ollama]").forEach(b=>b.addEventListener("click",()=>{ $("chat-backend").value="ollama";go("chat");$("chat-model").value=ollamaModels[Number(b.dataset.chatOllama)].name;}));root.querySelectorAll("[data-delete-ollama]").forEach(b=>b.addEventListener("click",async()=>{const m=ollamaModels[Number(b.dataset.deleteOllama)];if(!confirm("Verwijder "+m.name+" uit Ollama?"))return;try{await post("/api/ollama/delete",{name:m.name});toast("Ollama-model verwijderd");loadModels();}catch(e){toast(e.message);}}));}
+$("ollama-pull-form").addEventListener("submit",async e=>{e.preventDefault();const name=$("ollama-pull-name").value.trim();if(!name)return;const status=$("ollama-pull-status");status.textContent="Ollama download gestart…";try{const r=await fetch("/api/ollama/pull",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name})});if(!r.ok){const d=await r.json();throw Error(d.error||"Download mislukt");}const rd=r.body.getReader(),dec=new TextDecoder();let buf="";while(true){const{done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});const lines=buf.split("\n");buf=lines.pop();for(const line of lines){if(!line.trim())continue;const d=JSON.parse(line);status.textContent=d.status+(d.completed&&d.total?" · "+Math.round(d.completed/d.total*100)+"%":"");}}status.textContent="Download voltooid.";loadModels();}catch(e){status.textContent="Fout: "+e.message;}});
+async function loadModels(){try{const d=await api("/api/models?context="+encodeURIComponent($("load-context").value||4096)+"&cacheK="+encodeURIComponent($("load-k").value||"q8_0"));localModels=d.local||[];ollamaModels=d.models||[];renderLocal();renderOllama();const s=$("chat-model"),backend=$("chat-backend").value,old=s.value;s.innerHTML='<option value="">Selecteer model</option>';const list=backend==="ollama"?ollamaModels:localModels;list.forEach(m=>{const o=document.createElement("option");o.value=backend==="ollama"?m.name:m.path;o.textContent=m.name;s.append(o);});if([...s.options].some(o=>o.value===old))s.value=old;await loadRuntime();}catch(e){$("local-models").innerHTML='<div class="empty-state">Modelbibliotheek: '+esc(e.message)+'</div>';}}
+async function loadTextModel(m,mmproj){try{toast("Tekstmodel wordt geladen…");const r=await post("/api/runtime/text/load",{model:m.path,mmproj,context:Number($("load-context").value),gpuLayers:$("load-gpu").value,cacheK:$("load-k").value,cacheV:$("load-v").value});toast("Model gestart · PID "+r.pid);await loadRuntime();refresh();}catch(e){toast("Laden mislukt: "+e.message);}}
+$("unload-text").addEventListener("click",async()=>{try{await post("/api/runtime/text/unload",{});await loadRuntime();toast("Tekstmodel ontladen");}catch(e){toast(e.message);}});
+$("unload-image").addEventListener("click",async()=>{try{await post("/api/runtime/image/unload",{});await loadRuntime();toast("Beeldmodel ontladen");}catch(e){toast(e.message);}});
+$("reload-models").addEventListener("click",loadModels);
+$("chat-backend").addEventListener("change",loadModels);
+$("load-context").addEventListener("change",()=>loadModels());$("load-k").addEventListener("change",()=>loadModels());
+async function marketSearch(e){if(e)e.preventDefault();const q=$("market-query").value.trim();$("market-repositories").innerHTML='<div class="empty-state">Zoeken…</div>';try{const d=await api("/api/market/search?q="+encodeURIComponent(q));$("market-repositories").innerHTML=(d.repositories||[]).map((x,i)=>'<button class="market-repo" data-repo-index="'+i+'"><b>'+esc(x.id)+'</b><small>'+Number(x.downloads).toLocaleString("nl-NL")+' downloads · '+Number(x.likes).toLocaleString("nl-NL")+' likes</small></button>').join("")||'<div class="empty-state">Geen repositories gevonden.</div>';const nodes=$("market-repositories").querySelectorAll("[data-repo-index]");nodes.forEach((b,i)=>b.addEventListener("click",()=>openRepo(d.repositories[i].id,b)));}catch(e){$("market-repositories").innerHTML='<div class="empty-state">'+esc(e.message)+'</div>';}}
+async function openRepo(repo,button){selectedRepo=repo;document.querySelectorAll(".market-repo").forEach(x=>x.classList.remove("selected"));if(button)button.classList.add("selected");$("market-files-title").textContent=repo;$("market-files-subtitle").textContent="GGUF-bestanden laden…";$("market-file-list").innerHTML='<div class="empty-state">Bestanden laden…</div>';try{const d=await api("/api/market/files?repo="+encodeURIComponent(repo));$("market-files-subtitle").textContent=d.files.length+" GGUF-bestanden";$("market-file-list").innerHTML=d.files.map((f,i)=>'<div class="market-file"><div class="market-file-main"><b>'+esc(f.path)+'</b><small>'+fmt(f.size)+' · '+esc(f.plan.fit==="likely"?"Past waarschijnlijk":f.plan.fit==="tight"?"Krap":"Te groot")+'</small></div><button class="primary-button" data-download-index="'+i+'" '+(f.plan.fit==="too-large"?"disabled":"")+'>Download</button></div>').join("")||'<div class="empty-state">Geen GGUF-bestanden gevonden.</div>';const buttons=$("market-file-list").querySelectorAll("[data-download-index]");buttons.forEach((b,i)=>b.addEventListener("click",()=>downloadFile(d.files[i])));}catch(e){$("market-file-list").innerHTML='<div class="empty-state">'+esc(e.message)+'</div>';}}
+async function downloadFile(f,category="text"){try{await post("/api/market/download",{repo:category==="text"?selectedRepo:selectedImageRepo,category,file:f.path,size:f.size,sha256:f.sha256});toast("Toegevoegd aan downloadwachtrij");loadQueue();}catch(e){toast(e.message);}}
+async function loadQueue(){try{const d=await api("/api/market/queue");const q=d.queue||[];$("download-queue").innerHTML=q.map(x=>'<div class="queue-item"><div class="queue-top"><b>'+esc(x.name)+'</b><span class="queue-status '+esc(x.status)+'">'+esc(x.status)+'</span></div><div class="meter"><i style="width:'+(x.size?pct(x.downloaded,x.size):0)+'%"></i></div><small>'+fmt(x.downloaded||0)+' / '+fmt(x.size||0)+' · '+(x.speed?fmt(x.speed)+"/s":"")+(x.error?" · "+esc(x.error):"")+'</small><div class="queue-actions">'+(x.status==="downloading"?'<button data-queue="pause" data-id="'+x.id+'">Pauze</button>':"")+(["paused","error"].includes(x.status)?'<button data-queue="resume" data-id="'+x.id+'">Hervatten</button>':"")+'<button data-queue="remove" data-id="'+x.id+'">Verwijderen</button></div></div>').join("")||'<div class="empty-state">Geen downloads in de wachtrij.</div>';document.querySelectorAll("[data-queue]").forEach(b=>b.addEventListener("click",async()=>{try{await post("/api/market/action",{id:b.dataset.id,action:b.dataset.queue});loadQueue();}catch(e){toast(e.message);}}));}catch(e){console.warn(e);}}
+$("market-search").addEventListener("submit",marketSearch);$("refresh-queue").addEventListener("click",loadQueue);
+async function imageMarketSearch(e){if(e)e.preventDefault();const q=$("image-market-query").value.trim(),category=$("image-market-category").value;const root=$("image-market-results");root.innerHTML='<div class="empty-state">Zoeken op Hugging Face…</div>';try{const d=await api("/api/market/image-search?q="+encodeURIComponent(q));root.innerHTML=(d.repositories||[]).map((x,i)=>'<button class="market-repo" data-image-repo="'+i+'"><b>'+esc(x.id)+'</b><small>'+Number(x.downloads).toLocaleString("nl-NL")+' downloads · '+esc(x.pipeline)+'</small></button>').join("")||'<div class="empty-state">Geen repositories gevonden.</div>';root.querySelectorAll("[data-image-repo]").forEach((b,i)=>b.addEventListener("click",()=>openImageRepo(d.repositories[i].id,category,b)));}catch(e){root.innerHTML='<div class="empty-state">'+esc(e.message)+'</div>';}}
+async function openImageRepo(repo,category,button){selectedImageRepo=repo;document.querySelectorAll("#image-market-results .market-repo").forEach(x=>x.classList.remove("selected"));button.classList.add("selected");const root=$("image-market-results");try{const d=await api("/api/market/files?repo="+encodeURIComponent(repo)+"&category="+encodeURIComponent(category));root.innerHTML='<div class="market-file"><b>'+esc(repo)+' · '+d.files.length+' bestanden</b></div>'+d.files.map((f,i)=>'<div class="market-file"><div class="market-file-main"><b>'+esc(f.path)+'</b><small>'+fmt(f.size)+' · '+(f.plan?.fit==="likely"?"past waarschijnlijk":f.plan?.fit==="tight"?"RAM-offload":"waarschijnlijk te groot")+'</small></div><button class="primary-button" data-image-download="'+i+'">Download</button></div>').join("")||'<div class="empty-state">Geen compatibele modelbestanden in deze repository.</div>';root.querySelectorAll("[data-image-download]").forEach((b,i)=>b.addEventListener("click",()=>downloadFile(d.files[i],category)));}catch(e){root.innerHTML='<div class="empty-state">'+esc(e.message)+'</div>';}}
+$("image-market-search").addEventListener("submit",imageMarketSearch);
+async function loadImageModels(){try{const d=await api("/api/image/models");imageCatalog=d;imageModels=d.models||[];const fill=(id,items,empty)=>{const s=$(id),old=s.value;s.innerHTML='<option value="">'+empty+'</option>';(items||[]).forEach(m=>{const o=document.createElement("option");o.value=m.path;o.textContent=m.name+" · "+fmt(m.size)+(m.plan?" · "+(m.plan.fit==="likely"?"past":m.plan.fit==="tight"?"RAM-offload":"te groot"):"");s.append(o);});if([...s.options].some(x=>x.value===old))s.value=old;};fill("image-model",imageModels,"Selecteer checkpoint");fill("image-vae",d.vae,"Gebruik ingebouwde VAE");fill("image-lora",d.loras,"Geen LoRA");$("image-model-hint").textContent=imageModels.length+" checkpoints · "+(d.loras||[]).length+" LoRA\u0027s · "+(d.vae||[]).length+" VAE\u0027s";$("delete-image-model").disabled=!$("image-model").value;updateAssetDelete();}catch(e){$("image-model-hint").textContent=e.message;}}
+$("reload-image-models").addEventListener("click",loadImageModels);
+$("image-model").addEventListener("change",()=>{const p=$("image-model").value;$("delete-image-model").disabled=!p;const m=imageModels.find(x=>x.path===p);if(m?.plan)$("image-model-hint").textContent="Geschat "+fmt(m.plan.required)+" · "+(m.plan.fit==="likely"?"past waarschijnlijk":m.plan.fit==="tight"?"RAM/CPU-offload nodig":"waarschijnlijk te groot voor het beschikbare geheugen");});
+function updateAssetDelete(){$("delete-image-asset").disabled=!($("image-vae").value||$("image-lora").value);}
+$("image-vae").addEventListener("change",updateAssetDelete);$("image-lora").addEventListener("change",updateAssetDelete);
+$("delete-image-asset").addEventListener("click",async()=>{const p=$("image-lora").value||$("image-vae").value;if(!p)return;if(!confirm("Verwijder dit modelbestand definitief?"))return;try{await post("/api/image/models/delete",{path:p});toast("Beeldmodelbestand verwijderd");await loadImageModels();}catch(e){toast(e.message);}});
+async function loadImageOptions(){try{const d=await api("/api/image/options");for(const[key,id]of [["samplers","image-sampler"],["schedulers","image-scheduler"]]){const list=d[key];if(!Array.isArray(list)||!list.length)continue;const s=$(id),old=s.value;s.innerHTML="";list.forEach(x=>{const v=typeof x==="string"?x:x.name;if(!v)return;const o=document.createElement("option");o.value=v;o.textContent=v;s.append(o);});if([...s.options].some(o=>o.value===old))s.value=old;}}catch{}}
+$("delete-image-model").addEventListener("click",async()=>{const p=$("image-model").value;if(!p)return;if(!confirm("Verwijder dit checkpoint definitief?"))return;try{await post("/api/image/models/delete",{path:p});toast("Checkpoint verwijderd");loadImageModels();}catch(e){toast(e.message);}});
+$("load-image").addEventListener("click",async()=>{if(!$("image-model").value)return toast("Selecteer eerst een checkpoint");try{toast("Image runtime starten…");const r=await post("/api/runtime/image/load",{model:$("image-model").value,vae:$("image-vae").value});toast("Image runtime gestart · PID "+r.pid);await loadRuntime();await loadImageOptions();refresh();}catch(e){toast("Laden mislukt: "+e.message);}});
+function readData(file){return new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=no;r.readAsDataURL(file);});}
+let maskHasMarks=false,maskDrawing=false;
+function resetMaskCanvas(){const c=$("mask-canvas"),ctx=c.getContext("2d");ctx.fillStyle="#000";ctx.fillRect(0,0,c.width,c.height);maskHasMarks=false;}
+function maskPoint(e){const c=$("mask-canvas"),r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*c.width/r.width,y:(e.clientY-r.top)*c.height/r.height};}
+function maskStroke(e){const c=$("mask-canvas"),ctx=c.getContext("2d"),p=maskPoint(e),r=c.getBoundingClientRect();ctx.strokeStyle="#fff";ctx.lineWidth=Number($("mask-brush").value)*(c.width/r.width);ctx.lineCap="round";ctx.lineJoin="round";ctx.lineTo(p.x,p.y);ctx.stroke();maskHasMarks=true;sourceMask=null;}
+$("mask-canvas").addEventListener("pointerdown",e=>{if(!sourceImage)return;maskDrawing=true;$("mask-canvas").setPointerCapture(e.pointerId);const p=maskPoint(e),ctx=$("mask-canvas").getContext("2d");ctx.beginPath();ctx.moveTo(p.x,p.y);maskStroke(e);});
+$("mask-canvas").addEventListener("pointermove",e=>{if(maskDrawing)maskStroke(e);});
+$("mask-canvas").addEventListener("pointerup",()=>{maskDrawing=false;});
+$("mask-canvas").addEventListener("pointercancel",()=>{maskDrawing=false;});
+$("clear-mask").addEventListener("click",()=>{sourceMask=null;$("source-mask").value="";$("mask-name").textContent="";resetMaskCanvas();});
+function setSourceImage(raw){const img=new Image();img.onload=()=>{const scale=Math.min(1,4096/Math.max(img.naturalWidth,img.naturalHeight),Math.sqrt(16000000/(img.naturalWidth*img.naturalHeight))),w=Math.max(1,Math.round(img.naturalWidth*scale)),h=Math.max(1,Math.round(img.naturalHeight*scale)),tmp=document.createElement("canvas");tmp.width=w;tmp.height=h;tmp.getContext("2d").drawImage(img,0,0,w,h);sourceImage=tmp.toDataURL("image/jpeg",.92);$("source-preview").src=sourceImage;$("source-preview-wrap").hidden=false;$("mask-editor").hidden=false;const c=$("mask-canvas");c.width=w;c.height=h;resetMaskCanvas();sourceMask=null;$("source-mask").value="";$("mask-name").textContent="";};img.onerror=()=>toast("Afbeelding kon niet worden geladen");img.src=raw;}
+$("source-image").addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;try{setSourceImage(await readData(f));}catch(err){toast(err.message);}});
+$("source-mask").addEventListener("change",async e=>{const f=e.target.files[0];sourceMask=f?await readData(f):null;maskHasMarks=false;$("mask-name").textContent=f?"Maskerbestand: "+f.name:"";});
+$("remove-source").addEventListener("click",()=>{sourceImage=null;sourceMask=null;maskHasMarks=false;$("source-image").value="";$("source-mask").value="";$("source-preview-wrap").hidden=true;$("mask-editor").hidden=true;$("source-preview").removeAttribute("src");$("mask-name").textContent="";});
+$("clear-image-prompt").addEventListener("click",()=>{$("image-prompt").value="";$("image-negative").value="";});
+let imageBusy=false,progressTimer=null;
+$("generate-image").addEventListener("click",async()=>{if(imageBusy)return;if(!imageModels.length||!$("image-active-model").textContent||$("image-active-model").textContent==="Geen beeldmodel geladen")return toast("Laad eerst een beeldmodel");if(!$("image-prompt").value.trim())return toast("Vul een prompt in");imageBusy=true;$("generate-image").disabled=true;$("image-cancel").hidden=false;$("generation-status").textContent="Genereren…";$("generation-progress").hidden=false;$("generation-progress").value=0;progressTimer=setInterval(async()=>{try{const p=await api("/api/image/progress");$("generation-progress").value=Math.round((p.progress||0)*100);$("generation-status").textContent="Genereren… "+Math.round((p.progress||0)*100)+"%";}catch{}},1500);try{const b={prompt:$("image-prompt").value,negative_prompt:$("image-negative").value,width:Number($("image-width").value),height:Number($("image-height").value),steps:Number($("image-steps").value),cfg_scale:Number($("image-cfg").value),seed:Number($("image-seed").value),sampler_name:$("image-sampler").value,scheduler:$("image-scheduler").value};if($("image-lora").value)b.lora=[{path:$("image-lora").value.split("/").pop(),multiplier:Number($("image-lora-weight").value)||1}];if(sourceImage){b.init_images=[sourceImage];b.denoising_strength=Number($("image-denoise").value);if(sourceMask)b.mask=sourceMask;else if(maskHasMarks)b.mask=$("mask-canvas").toDataURL("image/png");}const d=await post("/api/image/generate",b);$("image-result").innerHTML=(d.images||[]).map(x=>'<img class="generated-image" src="data:image/png;base64,'+x+'" alt="Gegenereerde afbeelding">').join("")||'<div class="empty-state">Geen afbeelding geretourneerd.</div>';$("generation-status").textContent="Generatie voltooid. Opgeslagen: "+(d.saved||[]).join(", ");$("generation-progress").value=100;loadGallery();}catch(e){$("generation-status").textContent="Fout: "+e.message;toast(e.message);}finally{imageBusy=false;$("generate-image").disabled=false;$("image-cancel").hidden=true;clearInterval(progressTimer);}});
+$("image-cancel").addEventListener("click",async()=>{try{await post("/api/image/cancel",{});$("generation-status").textContent="Generatie onderbroken.";toast("Stopverzoek verzonden");}catch(e){toast(e.message);}});
+async function loadGallery(){try{const d=await api("/api/gallery");$("image-gallery").innerHTML=(d.items||[]).slice(0,12).map(x=>'<div class="gallery-thumb"><img src="/gallery/'+encodeURIComponent(x.name)+'" alt="'+esc(x.name)+'"><small>'+esc(x.name)+'</small><div class="gallery-actions"><button data-use-image="'+esc(x.name)+'">Als bron</button><button data-delete-image="'+esc(x.name)+'">Verwijder</button></div></div>').join("")||'<div class="empty-state">Nog geen opgeslagen afbeeldingen.</div>';document.querySelectorAll("[data-use-image]").forEach(b=>b.addEventListener("click",async()=>{try{const name=b.dataset.useImage,r=await fetch("/gallery/"+encodeURIComponent(name));if(!r.ok)throw Error("Afbeelding niet beschikbaar");const blob=await r.blob();setSourceImage(await readData(new File([blob],name,{type:blob.type})));$("source-image").value="";go("images");toast("Afbeelding als bron geladen");}catch(e){toast(e.message);}}));document.querySelectorAll("[data-delete-image]").forEach(b=>b.addEventListener("click",async()=>{if(!confirm("Verwijder afbeelding "+b.dataset.deleteImage+"?"))return;try{await api("/api/gallery/"+encodeURIComponent(b.dataset.deleteImage),{method:"DELETE"});loadGallery();}catch(e){toast(e.message);}}));}catch{$("image-gallery").innerHTML='<div class="empty-state">Galerij nog niet beschikbaar.</div>';}}
+$("refresh-gallery").addEventListener("click",loadGallery);
+async function loadFiles(){try{const d=await api("/api/files");$("scratch-files").innerHTML=(d.files||[]).map(f=>'<article class="model-card"><b>'+esc(f.name)+'</b><p>'+fmt(f.size)+' · '+esc(f.modified)+'</p><div class="model-card-footer"><button class="secondary-button" data-open-file="'+esc(f.name)+'">Openen</button><button class="text-button" data-delete-file="'+esc(f.name)+'">Verwijderen</button></div></article>').join("")||'<div class="empty-state">Scratch-map is leeg.</div>';document.querySelectorAll("[data-open-file]").forEach(b=>b.addEventListener("click",async()=>{const x=await api("/api/files/"+encodeURIComponent(b.dataset.openFile));$("file-name").value=x.name;$("file-content").value=x.content;}));document.querySelectorAll("[data-delete-file]").forEach(b=>b.addEventListener("click",async()=>{if(!confirm("Verwijder "+b.dataset.deleteFile+"?"))return;await api("/api/files/"+encodeURIComponent(b.dataset.deleteFile),{method:"DELETE"});loadFiles();}));}catch(e){$("scratch-files").textContent=e.message;}}
+$("refresh-files").addEventListener("click",loadFiles);$("save-file").addEventListener("click",async()=>{try{await post("/api/files",{name:$("file-name").value,content:$("file-content").value});toast("Bestand opgeslagen");loadFiles();}catch(e){toast(e.message);}});$("clear-file").addEventListener("click",()=>{$("file-name").value="";$("file-content").value="";});
+async function loadLogs(){try{const d=await api("/api/logs");$("log-output").textContent=(d[logTab]||[]).join("\n")||"Geen logregels.";document.querySelectorAll("[data-log]").forEach(b=>b.classList.toggle("active",b.dataset.log===logTab));}catch(e){$("log-output").textContent=e.message;}}
+document.querySelectorAll("[data-log]").forEach(b=>b.addEventListener("click",()=>{logTab=b.dataset.log;loadLogs();}));$("refresh-logs").addEventListener("click",loadLogs);
+async function loadSettings(){try{const d=await api("/api/settings"),s=d.settings;const map={backend:"setting-backend",context:"setting-context",threads:"setting-threads",gpuLayers:"setting-gpu",cacheK:"setting-k",cacheV:"setting-v",imagePort:"setting-image-port",imageThreads:"setting-image-threads",imageBackend:"setting-image-backend",imageWidth:"setting-image-width",imageHeight:"setting-image-height",imageSteps:"setting-image-steps",imageCfg:"setting-image-cfg",imageSampler:"setting-image-sampler",imageScheduler:"setting-image-scheduler",downloadDirectory:"setting-download",scratchLimitGiB:"setting-scratch",autoLoad:"setting-autoload",defaultModel:"setting-default-model"};for(const[k,id]of Object.entries(map)){if($(id))$(id).type==="checkbox"?$(id).checked=!!s[k]:$(id).value=s[k]??"";}if(s.backend)$("chat-backend").value=s.backend;if(s.context)$("load-context").value=String(s.context);if(s.gpuLayers)$("load-gpu").value=s.gpuLayers;if(s.cacheK)$("load-k").value=s.cacheK;if(s.cacheV)$("load-v").value=s.cacheV;if(s.imageSampler)$("image-sampler").value=s.imageSampler;if(s.imageScheduler)$("image-scheduler").value=s.imageScheduler;}catch(e){$("settings-status").textContent=e.message;}}
+$("settings-form").addEventListener("submit",async e=>{e.preventDefault();const s={backend:$("setting-backend").value,context:Number($("setting-context").value),threads:Number($("setting-threads").value),gpuLayers:$("setting-gpu").value,cacheK:$("setting-k").value,cacheV:$("setting-v").value,imagePort:Number($("setting-image-port").value),imageThreads:Number($("setting-image-threads").value),imageBackend:$("setting-image-backend").value,imageWidth:Number($("setting-image-width").value),imageHeight:Number($("setting-image-height").value),imageSteps:Number($("setting-image-steps").value),imageCfg:Number($("setting-image-cfg").value),imageSampler:$("setting-image-sampler").value,imageScheduler:$("setting-image-scheduler").value,downloadDirectory:$("setting-download").value,scratchLimitGiB:Number($("setting-scratch").value),autoLoad:$("setting-autoload").checked,defaultModel:$("setting-default-model").value};try{await post("/api/settings",s);$("settings-status").textContent="Instellingen opgeslagen.";toast("Instellingen opgeslagen");}catch(e){$("settings-status").textContent=e.message;}});
+function renderChat(){const root=$("chat-messages");if(!messages.length){root.innerHTML='<div class="chat-empty"><div class="empty-icon">✦</div><h3>Waar wil je aan werken?</h3><p>Start een gesprek met je lokale AI-model.</p></div>';return;}root.innerHTML=messages.map(m=>'<div class="chat-message '+m.role+'"><div class="message-role">'+(m.role==="user"?"Jij":"AI Studio")+'</div><div class="message-content">'+esc(m.content).replace(/\n/g,"<br>")+'</div></div>').join("");root.scrollTop=root.scrollHeight;}
+$("new-chat").addEventListener("click",()=>{chatController?.abort();messages=[];conversationId=newId();$("chat-history").value="";renderChat();});
+$("delete-chat").addEventListener("click",async()=>{const id=$("chat-history").value;if(!id)return toast("Selecteer eerst een opgeslagen gesprek");if(!confirm("Verwijder dit gesprek definitief?"))return;try{await api("/api/conversations/"+encodeURIComponent(id),{method:"DELETE"});messages=[];conversationId=newId();renderChat();await loadConversations();toast("Gesprek verwijderd");}catch(e){toast(e.message);}});
+$("export-chat").addEventListener("click",()=>{if(!messages.length)return toast("Dit gesprek is nog leeg");const md=messages.map(m=>(m.role==="user"?"## Jij":"## AI Studio")+"\n\n"+m.content).join("\n\n---\n\n");const blob=new Blob([md],{type:"text/markdown;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="ps5-ai-studio-gesprek.md";a.click();URL.revokeObjectURL(url);});
+async function loadConversations(){try{const d=await api("/api/conversations"),s=$("chat-history"),old=s.value;s.innerHTML='<option value="">Nieuw gesprek</option>';(d.conversations||[]).forEach(c=>{const o=document.createElement("option");o.value=c.id;o.textContent=(c.title||"Gesprek")+" · "+c.messages;s.append(o);});if(old&&[...s.options].some(o=>o.value===old))s.value=old;}catch(e){console.warn(e);}}
+async function saveConversation(){if(!messages.length)return;const first=messages.find(m=>m.role==="user")?.content||"Nieuw gesprek";const title=String(first).replace(/\s+/g," ").slice(0,70)||"Nieuw gesprek";try{await post("/api/conversations",{id:conversationId,title,messages});await loadConversations();$("chat-history").value=conversationId;}catch(e){console.warn("Conversation save",e);}}
+$("chat-history").addEventListener("change",async()=>{chatController?.abort();const id=$("chat-history").value;if(!id){messages=[];conversationId=newId();renderChat();return;}try{const d=await api("/api/conversations/"+encodeURIComponent(id));conversationId=d.id;messages=d.messages||[];renderChat();}catch(e){toast(e.message);}});
+document.querySelectorAll("[data-prompt]").forEach(b=>b.addEventListener("click",()=>{$("chat-input").value=b.dataset.prompt;$("chat-input").focus();}));
+$("chat-image").addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;chatImage=await readData(f);$("chat-image-name").textContent=f.name;$("clear-chat-image").hidden=false;});
+$("clear-chat-image").addEventListener("click",()=>{chatImage=null;$("chat-image").value="";$("chat-image-name").textContent="Voeg afbeelding toe (vision-model vereist)";$("clear-chat-image").hidden=true;});
+$("chat-files").addEventListener("change",async e=>{const selected=[...e.target.files];try{for(const f of selected){if(f.size>1024*1024)throw Error(f.name+" is groter dan 1 MiB");if(chatFiles.reduce((n,x)=>n+x.content.length,0)+f.size>2*1024*1024)throw Error("Maximaal 2 MiB aan tekstbestanden per bericht");chatFiles.push({name:f.name,content:await f.text()});}$("chat-files-name").textContent=chatFiles.map(x=>x.name).join(", ");$("clear-chat-files").hidden=!chatFiles.length;}catch(err){toast(err.message);}});
+$("clear-chat-files").addEventListener("click",()=>{chatFiles=[];$("chat-files").value="";$("chat-files-name").textContent="";$("clear-chat-files").hidden=true;});
+$("chat-form").addEventListener("submit",async e=>{e.preventDefault();if(chatController)return;const text=$("chat-input").value.trim();if(!text&&!chatImage&&!chatFiles.length)return;const backend=$("chat-backend").value,model=$("chat-model").value;if(!model)return toast("Selecteer eerst een model");const fileNames=chatFiles.map(f=>f.name);messages.push({role:"user",content:text+(chatImage?" [afbeelding toegevoegd]":"")+(fileNames.length?" [bestanden: "+fileNames.join(", ")+"]":"")});const sendMessages=messages.slice(0,-1).map(m=>({role:m.role,content:m.content}));const promptText=text+chatFiles.map(f=>"\n\n--- bestand: "+f.name+" ---\n"+f.content).join("");const userContent=chatImage?[{type:"text",text:promptText},{type:"image_url",image_url:{url:chatImage}}]:promptText;sendMessages.push({role:"user",content:userContent});messages.push({role:"assistant",content:""});$("chat-input").value="";renderChat();chatController=new AbortController();$("send-chat").disabled=true;$("stop-chat").hidden=false;try{const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({backend,model,messages:sendMessages}),signal:chatController.signal});if(!r.ok){let d={};try{d=await r.json();}catch{}throw Error(d.error||"Chat HTTP "+r.status);}const reader=r.body.getReader(),decoder=new TextDecoder();let buffer="";while(true){const{done,value}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true});const lines=buffer.split("\n");buffer=lines.pop();for(const line of lines){const raw=line.startsWith("data:")?line.slice(5).trim():line.trim();if(!raw||raw==="[DONE]")continue;try{const d=JSON.parse(raw);const delta=backend==="ollama"?(d.message?.content||""):(d.choices?.[0]?.delta?.content||"");if(delta){messages[messages.length-1].content+=delta;renderChat();}}catch{}}}}catch(e){if(e.name!=="AbortError"){messages[messages.length-1].content="Fout: "+e.message;renderChat();}}finally{await saveConversation();chatController=null;$("send-chat").disabled=false;$("stop-chat").hidden=true;chatImage=null;$("chat-image").value="";$("chat-image-name").textContent="Voeg afbeelding toe (vision-model vereist)";$("clear-chat-image").hidden=true;chatFiles=[];$("chat-files").value="";$("chat-files-name").textContent="";$("clear-chat-files").hidden=true;}});
+$("stop-chat").addEventListener("click",()=>chatController?.abort());
+$("chat-input").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("chat-form").requestSubmit();}});
+$("refresh").addEventListener("click",()=>{refresh();if(currentView==="models")loadModels();if(currentView==="images")loadRuntime();});
+refresh();loadSettings();setInterval(()=>{refresh();if(currentView==="models")loadRuntime();if(currentView==="market")loadQueue();if(currentView==="images")loadRuntime();},60000);setInterval(()=>{if(currentView==="market")loadQueue();},2000);
