@@ -55,7 +55,7 @@ This is a functional parity tracker, not a claim that the two platforms share co
 
 ### v0.4 additions
 
-- ControlNet model discovery, download category, runtime loading and reference-image/strength controls: end-to-end validated on CPU; Vulkan ControlNet crashes on this PS5, so conditioned image sessions automatically use CPU.
+- ControlNet model discovery, download category, runtime loading and reference-image/strength controls: end-to-end validated on CPU; ControlNet Vulkan crashes on this PS5; IP-Adapter Vulkan is not yet verified, so both conditioning workflows automatically use CPU.
 - IP-Adapter + CLIP Vision discovery, download categories, paired runtime loading and reference-image/strength controls: end-to-end SD1.5 CPU generation validated with the classic adapter and FP16 CLIP Vision H. Conditioning sessions use CPU for compatibility.
 - Multi-LoRA selection with shared multiplier: implemented.
 - ESRGAN upscale job using sd-cli, with status, logs and cancellation: validated on Vulkan with RealESRGAN_x4plus.
@@ -63,6 +63,6 @@ This is a functional parity tracker, not a claim that the two platforms share co
 - Combined checkpoint/conditioning memory planner, server-side load preflight and built-in/custom prompt presets: implemented.
 - Batch generation (1–4 images) with batch-aware prompt presets and gallery metadata: implemented.
 - SD 1.5 txt2img and img2img/inpainting: tested on PS5 Vulkan; 512×512 smoke generations completed and saved.
-- Native asynchronous ControlNet/IP-Adapter job path, job progress, preview metadata and cancellation: implemented. ControlNet and IP-Adapter end-to-end generation passed on CPU individually and together; the IP-Adapter-only 512×512 one-step smoke job completed in 54.3 seconds and the combined conditioning job completed in 78.7 seconds. Vulkan conditioning crashes in the SD1.5 UNet path on this PS5, so conditioned jobs automatically use the CPU backend for reliability.
+- Native asynchronous ControlNet/IP-Adapter job path, job progress, preview metadata and cancellation: implemented. ControlNet and IP-Adapter end-to-end generation passed on CPU individually and together; the IP-Adapter-only 512×512 one-step smoke job completed in 54.3 seconds and the combined conditioning job completed in 78.7 seconds. A ControlNet-conditioned Vulkan job crashes in the SD1.5 UNet path on this PS5; IP-Adapter Vulkan remains unverified, so both conditioning workflows currently use the CPU backend for reliability.
 - Uploaded inpainting masks are normalized to grayscale and source dimensions before generation; optional mask inversion is available.
 - Marketplace excludes `.pt` and `.pth` pickle-based image model downloads; `.onnx` support added to the download allow-list.
