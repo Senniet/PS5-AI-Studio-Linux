@@ -135,6 +135,18 @@ Start with 10 GiB rather than 12 GiB. Keep the current 512 MiB `vram.txt` reserv
 
 After the move to kernel 7.3.0-PinkSoup, the active TTM values were rechecked directly on the PS5: `pages_limit=1848125`, `page_pool_size=0`, `dma32_pages_limit=524288`. AMDGPU reports 512 MiB VRAM and 7,219 MiB GTT. These are the active values; no boot-memory setting has been changed. The read-only web dashboard also reports these values from sysfs.
 
+## Runtime TTM changes — source-level finding
+
+The matching local kernel source was inspected at `drivers/gpu/drm/ttm/ttm_tt.c` and `drivers/gpu/drm/amd/amdgpu/amdgpu_ttm.c`:
+
+- `ttm.pages_limit` is a writable module parameter (mode 0644), and TTM consults its current value when accounting populated pages.
+- AMDGPU separately reads `ttm_tt_pages_limit()` during `amdgpu_ttm_init()`, computes `gtt_size`, and initializes the GTT manager once with `amdgpu_gtt_mgr_init()`.
+- Therefore writing a larger number to `/sys/module/ttm/parameters/pages_limit` after boot does **not** resize the already initialized GTT heap. It can change TTM's page-accounting threshold while the GPU-visible GTT heap remains the old size. Do not use a live sysfs write as a GTT expansion workaround.
+- `page_pool_size` is also consumed during TTM pool initialization to set per-node pool limits; changing it after initialization does not rebuild those limits.
+- The PS5's current `dma32_pages_limit=524288` is a separate allocation ceiling. The AMDGPU driver only enables the TTM DMA32 pool when the device's DMA addressing is limited; this is not a replacement for the GTT limit.
+
+Conclusion: a real GTT size increase needs the TTM parameter set before AMDGPU initialization, which for this boot setup means changing the kexec command line and booting the kernel again. Since the console cannot currently be rebooted remotely, no live memory parameter has been changed.
+
 ## Notes
 
 - `vulkaninfo` emits a Mesa DRI3/presentation warning in this desktop session. Both inference runtimes nevertheless enumerate the RADV device; the warning did not prevent compute backend detection.
