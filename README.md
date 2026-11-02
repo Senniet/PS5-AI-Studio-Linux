@@ -52,6 +52,7 @@ Use the PS5's current LAN address, for example http://192.168.2.210:8787. The ad
 - Video models: ~/.local/share/ps5-ai-studio/models/video/{diffusion_models,text_encoders,vae,loras,clip_vision,interpolators}
 - Generated videos: ~/.local/share/ps5-ai-studio/outputs/videos
 - Conversations and queue state: ~/.local/share/ps5-ai-studio
+- Optional server environment: ~/.config/ps5-ai-studio-linux/app.env (for example CIVITAI_API_KEY; never commit secrets)
 - Native Prospero model directories are deliberately excluded from Linux scanning and downloads; no native model files are moved or modified.
 
 ## Requirements
