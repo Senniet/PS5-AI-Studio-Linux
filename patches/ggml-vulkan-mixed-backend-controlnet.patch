@@ -1,0 +1,48 @@
+From 60ebd299dcf4830ccd99f7f19422b10d3998231e Mon Sep 17 00:00:00 2001
+From: PS5 AI Studio <ps5-ai-studio@localhost>
+Date: Sun, 1 Nov 2026 23:18:09 +0100
+Subject: [PATCH] fix(vulkan): guard mixed-backend tensor buffers
+
+---
+ src/ggml-vulkan/ggml-vulkan.cpp | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/src/ggml-vulkan/ggml-vulkan.cpp b/src/ggml-vulkan/ggml-vulkan.cpp
+index c2bc2cdec..b4f72601f 100644
+--- a/src/ggml-vulkan/ggml-vulkan.cpp
++++ b/src/ggml-vulkan/ggml-vulkan.cpp
+@@ -12767,7 +12767,7 @@ bool ggml_vk_build_graph(ggml_backend_vk_context * ctx, ggml_cgraph * cgraph, in
+         // checked against the written list. Two nodes overlap in memory if they come from the same
+         // buffer and the tensor or view ranges overlap.
+         auto const &overlaps_unsynced = [&](const ggml_tensor *node, const std::vector<const ggml_tensor *> &unsynced_nodes) -> bool {
+-            if (unsynced_nodes.size() == 0) {
++            if (unsynced_nodes.size() == 0 || node->buffer == nullptr || !ggml_backend_buffer_is_vk(node->buffer)) {
+                 return false;
+             }
+             auto n_base = vk_tensor_offset(node) + node->view_offs;
+@@ -12775,6 +12775,10 @@ bool ggml_vk_build_graph(ggml_backend_vk_context * ctx, ggml_cgraph * cgraph, in
+             ggml_backend_vk_buffer_context * a_buf_ctx = (ggml_backend_vk_buffer_context *)node->buffer->context;
+             vk_buffer a_buf = a_buf_ctx->dev_buffer;
+             for (auto &other : unsynced_nodes) {
++                // Mixed-backend graphs can contain CPU/Vulkan-host tensors; only device Vulkan buffers have this context.
++                if (other == nullptr || other->buffer == nullptr || !ggml_backend_buffer_is_vk(other->buffer)) {
++                    continue;
++                }
+                 ggml_backend_vk_buffer_context * o_buf_ctx = (ggml_backend_vk_buffer_context *)other->buffer->context;
+                 vk_buffer o_buf = o_buf_ctx->dev_buffer;
+                 if (a_buf == o_buf) {
+@@ -14975,6 +14979,11 @@ bool ggml_vk_can_fuse_snake(ggml_backend_vk_context * ctx, const struct ggml_cgr
+ }
+ 
+ bool ggml_vk_tensors_overlap(const ggml_tensor * a, const ggml_tensor * b, bool elementwise) {
++    // CPU and Vulkan-host tensors cannot alias Vulkan device allocations.
++    if (a == nullptr || b == nullptr || a->buffer == nullptr || b->buffer == nullptr ||
++        !ggml_backend_buffer_is_vk(a->buffer) || !ggml_backend_buffer_is_vk(b->buffer)) {
++        return false;
++    }
+     ggml_backend_vk_buffer_context * a_buf_ctx = (ggml_backend_vk_buffer_context *)a->buffer->context;
+     vk_buffer a_buf = a_buf_ctx->dev_buffer;
+     ggml_backend_vk_buffer_context * b_buf_ctx = (ggml_backend_vk_buffer_context *)b->buffer->context;
+-- 
+2.53.0
+
