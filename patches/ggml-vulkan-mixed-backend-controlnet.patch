@@ -45,4 +45,3 @@ index c2bc2cdec..b4f72601f 100644
      ggml_backend_vk_buffer_context * b_buf_ctx = (ggml_backend_vk_buffer_context *)b->buffer->context;
 -- 
 2.53.0
-

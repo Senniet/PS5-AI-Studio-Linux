@@ -1,0 +1,5 @@
+Krea 2 is licensed under the Krea 2 Community License Agreement. For more information, visit https://krea.ai/krea-2-licensing.
+
+This repository distributes a Derivative of the Krea 2 Turbo model, as defined in that agreement: a LoRA adapter produced by distilling Krea 2 Turbo to a 2-step schedule. The Krea Model has been modified. This adapter is not an official Krea product and is not endorsed by Krea.ai, Inc.
+
+Use of this adapter is subject to the Krea 2 Community License Agreement (LICENSE.pdf in this repository) and the Krea Acceptable Use Policy (https://krea.ai/krea-2-use-policy), exactly as use of Krea 2 Turbo itself is.

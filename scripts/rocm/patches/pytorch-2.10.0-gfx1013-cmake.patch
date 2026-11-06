@@ -1,0 +1,44 @@
+diff --git a/caffe2/CMakeLists.txt b/caffe2/CMakeLists.txt
+index 6cbaecc5..60af7a84 100644
+--- a/caffe2/CMakeLists.txt
++++ b/caffe2/CMakeLists.txt
+@@ -1769,7 +1769,10 @@ if(USE_ROCM)
+   hip_include_directories(${Caffe2_HIP_INCLUDE})
+ 
+   # Since PyTorch files contain HIP headers, these flags are required for the necessary definitions to be added.
+-  target_compile_options(torch_hip PUBLIC ${HIP_CXX_FLAGS})  # experiment
++  set(HIP_CXX_FLAGS_PUBLIC ${HIP_CXX_FLAGS})
++  list(REMOVE_ITEM HIP_CXX_FLAGS_PUBLIC -std=c++17)
++  target_compile_options(torch_hip PUBLIC ${HIP_CXX_FLAGS_PUBLIC})
++  set_target_properties(torch_hip PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON HIP_STANDARD 17 HIP_STANDARD_REQUIRED ON)
+ 
+   target_link_libraries(torch_hip PUBLIC c10_hip)
+ 
+diff --git a/caffe2/perfkernels/CMakeLists.txt b/caffe2/perfkernels/CMakeLists.txt
+index 1b46916c..7597ad2c 100644
+--- a/caffe2/perfkernels/CMakeLists.txt
++++ b/caffe2/perfkernels/CMakeLists.txt
+@@ -25,6 +25,7 @@ set(Caffe2_CPU_SRCS ${Caffe2_CPU_SRCS} ${common_srcs})
+ # extensions.
+ if(CXX_AVX2_FOUND)
+   add_library(Caffe2_perfkernels_avx2 STATIC ${avx2_srcs})
++  target_compile_definitions(Caffe2_perfkernels_avx2 PRIVATE CAFFE2_PERF_WITH_AVX2=1)
+   target_link_libraries(Caffe2_perfkernels_avx2 PRIVATE c10)
+ 
+   if(MSVC AND NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+diff --git a/cmake/public/utils.cmake b/cmake/public/utils.cmake
+index 3cdf5fb9..3e64ab3d 100644
+--- a/cmake/public/utils.cmake
++++ b/cmake/public/utils.cmake
+@@ -253,7 +253,10 @@ function(caffe2_hip_binary_target target_name_or_src)
+ 
+   caffe2_binary_target(${target_name_or_src})
+ 
+-  target_compile_options(${__target} PRIVATE ${HIP_CXX_FLAGS})
++  set(__hip_compile_flags ${HIP_CXX_FLAGS})
++  list(REMOVE_ITEM __hip_compile_flags -std=c++17)
++  target_compile_options(${__target} PRIVATE ${__hip_compile_flags})
++  set_target_properties(${__target} PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON HIP_STANDARD 17 HIP_STANDARD_REQUIRED ON)
+   target_include_directories(${__target} PRIVATE ${Caffe2_HIP_INCLUDE})
+ endfunction()
+ 

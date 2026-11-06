@@ -48,7 +48,7 @@ The download queue:
 - persists queue state across service restarts.
 
 ### Runtime exclusivity
-The app stops the other GPU-heavy runtime before starting a text, image or video runtime. Text chat and text-model loading use llama.cpp exclusively. Native video inference uses stable-diffusion.cpp on Vulkan0 for diffusion, text encoder and VAE. ComfyUI is a separate optional workflow service and currently runs CPU-only on the PS5; it is not a GPU inference backend.
+The app stops the other GPU-heavy native runtime before starting a text, image or video runtime. Text chat and text-model loading use llama.cpp exclusively. Native video inference uses stable-diffusion.cpp on Vulkan0 for diffusion, text encoder and VAE. ComfyUI is a separate optional workflow service; its active ROCm/HIP gfx1013 backend has been validated for Krea 2 image generation, but that does not validate ComfyUI video workflows.
 
 ## Image pipeline
 

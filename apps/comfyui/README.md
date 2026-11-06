@@ -8,7 +8,7 @@
 
 ## Hardware mode
 
-The PS5 Oberon device is exposed through Vulkan, but the installed PyTorch stack does not expose a supported ROCm/HIP backend for this GPU. ComfyUI therefore runs on CPU for graph orchestration and standard CPU nodes. Do not change this to ROCm or force a gfx target without a separately validated backend build. The PS5 bridge node sends image-generation jobs to stable-diffusion.cpp, which already uses the Vulkan backend.
+The active `ps5-ai-studio-comfyui.service` uses the isolated `comfy-rocm-venv` with PyTorch `2.10.0+ps5gfx1013` and ROCm/HIP on the PS5 Oberon GPU. Krea 2 image generation has completed on HIP; see `docs/ROCM_GFX1013.md` and `docs/KREA2-OPTIMIZATION-RESULTS-20261104.md` for validated capabilities and limits. The PS5 bridge node continues to send supported image-generation jobs to stable-diffusion.cpp on Vulkan.
 
 ## Manager security
 

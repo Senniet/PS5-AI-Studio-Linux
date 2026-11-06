@@ -1,0 +1,17 @@
+import assert from "node:assert/strict";
+import {readGGUFTensorCount,classifyGGUFLoadability,isValidGGUFHeader} from "../apps/server/gguf-loadability.mjs";
+const header=Buffer.alloc(24);
+header.write("GGUF",0,"ascii");header.writeUInt32LE(3,4);header.writeBigUInt64LE(18n,8);header.writeBigUInt64LE(4n,16);
+assert.equal(isValidGGUFHeader(header),true);
+assert.equal(readGGUFTensorCount(header),18);
+assert.equal(readGGUFTensorCount(header.subarray(0,15)),null);
+assert.equal(readGGUFTensorCount(Buffer.alloc(24)),null);
+assert.equal(isValidGGUFHeader(Buffer.alloc(24)),false);
+const noTensors=Buffer.from(header);noTensors.writeBigUInt64LE(0n,8);assert.equal(isValidGGUFHeader(noTensors),false);
+assert.deepEqual(classifyGGUFLoadability(18,65),{loadable:false,reason:"GGUF lijkt onvolledig: 18 tensors voor 65 modelblokken; dit ligt onder de conservatieve ondergrens van 2 tensors per blok en kan een draft/MTP-fragment zijn."});
+assert.deepEqual(classifyGGUFLoadability(1000,65),{loadable:true,reason:null});
+assert.equal(classifyGGUFLoadability(65,33).loadable,false);
+assert.equal(classifyGGUFLoadability(66,33).loadable,true);
+assert.deepEqual(classifyGGUFLoadability(null,65),{loadable:true,reason:null});
+assert.deepEqual(classifyGGUFLoadability(4,null),{loadable:true,reason:null});
+console.log("GGUF loadability fixture: 12 assertions passed");

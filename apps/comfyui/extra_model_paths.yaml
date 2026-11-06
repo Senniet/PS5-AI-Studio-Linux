@@ -2,9 +2,12 @@ ps5_ai_studio:
   base_path: /home/michel/.local/share/ps5-ai-studio/models/image
   is_default: true
   checkpoints: checkpoints
+  diffusion_models: checkpoints
+  unet: checkpoints
   loras: loras
   vae: vae
   controlnet: controlnet
   upscale_models: upscalers
   clip_vision: clipvision
   text_encoders: clip
+  clip: clip

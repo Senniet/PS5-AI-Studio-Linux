@@ -190,6 +190,6 @@ This is a functional parity tracker, not a claim that the two platforms share co
 - Added Wan 2.1 T2V 1.3B Q4 as the first native profile. The complete model stack is checked against the current shared GTT pool before download/load; Wan 2.2 TI2V 5B is not considered loadable on the current measured PS5 GPU memory budget.
 - Added mutually exclusive text/image/video runtime management, native asynchronous video jobs, progress polling, cancellation, WebM output and a local video library. Native T2V targets from 1–60 seconds are divided into segments of at most 81 frames and concatenated with GStreamer.
 - Validated a real 1-second, 9-frame, 2-step Wan 2.1 generation on Vulkan0 and separately validated VP9/WebM concatenation. A full multi-segment model generation and cross-segment visual continuity remain unverified.
-- Kept ComfyUI as an optional API-workflow backend. Its current PS5 PyTorch installation is CPU-only; it is not presented as a GPU video backend.
+- Kept ComfyUI as an optional API-workflow backend. Its active gfx1013 ROCm/HIP build has validated Krea 2 image generation; native video continues to use the separate Vulkan engine.
 - Corrected documentation to reflect that Basic Auth was explicitly removed and must not be described as enabled. Host/Origin checks and CSP remain, but the UI is unauthenticated and should stay on a trusted LAN.
 - Validation: npm run check passes; /api/health and /api/video/native/status respond successfully; the native Wan 2.1 model loads on Vulkan0.

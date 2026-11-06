@@ -1,0 +1,6 @@
+torch
+onnx
+einops
+numpy
+Pillow
+gdown

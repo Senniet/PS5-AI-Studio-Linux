@@ -1,0 +1,23 @@
+[Unit]
+Description=PS5 AI Studio ComfyUI Workflow Backend (ROCm gfx1013)
+After=network.target ps5-ai-studio-linux.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/michel/PS5-AI-Studio-Linux/runtimes/ComfyUI
+ExecStart=/home/michel/PS5-AI-Studio-Linux/runtimes/comfy-rocm-venv/bin/python /home/michel/PS5-AI-Studio-Linux/runtimes/ComfyUI/main.py --listen 192.168.2.210 --port 8790 --disable-auto-launch --enable-manager --offline --disable-metadata --enable-dynamic-vram --fp8_e4m3fn-text-enc --force-fp16 --fp16-intermediates --reserve-vram 0.5 --extra-model-paths-config /home/michel/PS5-AI-Studio-Linux/runtimes/ComfyUI/extra_model_paths.yaml
+Restart=on-failure
+RestartSec=5
+Environment=PS5_AI_STUDIO_API=http://127.0.0.1:8787
+Environment=PYTHONUNBUFFERED=1
+Environment=ROCM_PATH=/home/michel/rocm-ps5-research/rocm-root/usr
+Environment=HIP_PATH=/home/michel/rocm-ps5-research/rocm-root/usr
+Environment=HIP_CLANG_PATH=/home/michel/rocm-ps5-research/rocm-root/usr/lib/rocm/llvm/bin
+Environment=GPU_PINNED_MIN_XFER_SIZE=16384
+Environment=TORCH_BLAS_PREFER_HIPBLASLT=0
+Environment=HSA_ENABLE_SDMA=0
+Environment=MIOPEN_DEBUG_GCN_ASM_KERNELS=0
+Environment=LD_LIBRARY_PATH=/home/michel/rocm-ps5-research/runtime-libs/usr/lib/x86_64-linux-gnu:/home/michel/rocm-ps5-research/rocblas-install/lib:/home/michel/rocm-ps5-research/rocm-root/usr/lib/rocm/llvm/lib:/home/michel/rocm-ps5-research/rocm-root/usr/lib/x86_64-linux-gnu:/home/michel/rocm-ps5-research/rocm-root/usr/lib:/home/michel/rocm-ps5-research/rocm-root/usr/lib/rocm/lib
+
+[Install]
+WantedBy=default.target

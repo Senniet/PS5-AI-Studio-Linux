@@ -1,0 +1,16 @@
+--- a/drivers/gpu/drm/amd/amdgpu/amdgpu_ttm.c
++++ b/drivers/gpu/drm/amd/amdgpu/amdgpu_ttm.c
+@@ -1288,8 +1288,13 @@
+ 	if (ttm->page_flags & TTM_TT_FLAG_EXTERNAL)
+ 		return;
+ 
++	/* PS5/gfx1013: pages[] can contain NULL when a BO was only partially
++	 * populated (for example after an aborted GPU command). Avoid turning
++	 * that cleanup path into a kernel NULL dereference (CR2=0x18).
++	 */
+ 	for (i = 0; i < ttm->num_pages; ++i)
+-		ttm->pages[i]->mapping = NULL;
++		if (ttm->pages[i])
++			ttm->pages[i]->mapping = NULL;
+ 
+ 	adev = amdgpu_ttm_adev(bdev);

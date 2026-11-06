@@ -1,0 +1,13 @@
+import assert from "node:assert/strict";
+import path from "node:path";
+import {normalizePersistedDownload,blockedPersistedDownload} from "../apps/server/download-record-validation.mjs";
+const dirs={loras:["/models/loras"],text:["/models/text"],video_diffusion_models:["/models/video/diffusion_models"]};
+const base={id:"99f06f65-8772-41a7-82a7-ce86e8870c98",source:"civitai-red",category:"loras",repo:"civitai-red",file:"sub/adapter.safetensors",name:"adapter.safetensors",size:100,downloaded:0,url:"http://127.0.0.1:8000/evil",versionId:123,fileType:"Model",format:"SafeTensor",fileId:456,target:"/models/loras/adapter.safetensors",part:"/models/loras/adapter.safetensors.part",status:"error"};
+const clean=normalizePersistedDownload(base,dirs);assert.equal(clean.url,"https://civitai.red/api/download/models/123?type=Model&format=SafeTensor&fileId=456");
+assert.equal(clean.target,base.target);assert.equal(clean.part,base.part);
+assert.equal(normalizePersistedDownload({...base,target:"/tmp/outside",part:"/tmp/outside.part"},dirs),null);
+assert.equal(normalizePersistedDownload({...base,part:"/models/loras/adapter.safetensors"},dirs),null);
+assert.equal(normalizePersistedDownload({...base,source:"huggingface",repo:"evil",url:"http://127.0.0.1/"},dirs),null);
+assert.equal(normalizePersistedDownload({...base,downloaded:101},dirs),null);
+const blocked=blockedPersistedDownload({...base,target:"/tmp/x",url:"https://attacker.invalid"});assert.equal(blocked.blocked,true);assert.equal(blocked.target,null);assert.equal(blocked.url,"");
+console.log("Download record validation: 7 assertions passed");

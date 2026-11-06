@@ -2,15 +2,18 @@
 
 A separate Linux-native edition of PS5 AI Studio for Ubuntu booted on PlayStation 5 through PS5 Linux Loader. This project is **not** the native Prospero/PS5 application and does not share its build, deployment, SDK or title-ID workflow.
 
+**Latest live-state note (2026-11-06):** both Studio and ComfyUI services recovered after a PS5 reboot. A standalone Krea 2 Vulkan smoke test crashed the host before producing an image, so that route remains unverified. See [the live-state and recovery note](docs/2026-11-06-LIVE-STATE.md).
+
 ## Current capabilities
 
 - Browser UI on 0.0.0.0:8787. Basic Auth is intentionally disabled; use only on a trusted private LAN.
 - Local chat using llama.cpp; streaming responses, image input for vision models, text-file attachments, saved conversations and Markdown export.
 - Hugging Face text and image model search/downloads, metadata inspection, memory estimates, a shared pause/resume queue with duplicate-target protection, verified HTTP range-resume, SHA-256 validation, atomic queue persistence, automatic exclusion and matching of mmproj projectors (including names with mmproj in the middle), manual mmproj selection, model load/unload and deletion.
 - Image Studio using stable-diffusion.cpp: checkpoint search/download, a unified inventory for checkpoints, VAE, LoRA, CLIP/text encoders, ControlNet, IP-Adapter, CLIP Vision and upscalers, text-to-image, image-to-image, mask painting/inpainting, generation progress/cancel, local gallery, independent preview clearing, complete image workflows, JSON import/export, in-place editing, and a visual node-based workflow builder. The inventory shows active assets and prevents deleting files currently loaded by the runtime. Workflow application validates required paths, duplicate critical nodes and cycles.
-- Native PS5 AI Video Engine using stable-diffusion.cpp / ggml-Vulkan on port 1235, with its own video-model library, Wan 2.1 T2V profile, async generation jobs, cancellation, segment-based long-video orchestration (1–60 seconds), WebM output and local video gallery. ComfyUI remains an optional CPU-based workflow backend.
+- Native PS5 AI Video Engine using stable-diffusion.cpp / ggml-Vulkan on port 1235, with its own video-model library, Wan 2.1 T2V profile, async generation jobs, cancellation, segment-based long-video orchestration (1–60 seconds), WebM output and local video gallery. ComfyUI remains an optional workflow backend; the active gfx1013 ROCm/HIP service has validated Krea 2 image routes. Native Wan video continues to use its separate Vulkan runtime.
 - Live diagnostics for CPU, RAM/swap, AMDGPU VRAM/GTT/TTM, temperatures, storage and runtime state.
 - Settings, logs and a bounded scratch-file workspace.
+- Krea 2 prompt intelligence: OpenRouter preset/free-model routing with automatic local Qwen3-4B prompt-model fallback, original-prompt preservation and optimizer provenance in output metadata.
 
 ## Platform separation
 
@@ -62,7 +65,7 @@ Use the PS5's current LAN address, for example http://192.168.2.210:8787. The ad
 - llama.cpp built with Vulkan support
 - stable-diffusion.cpp built with Vulkan support for image and native video workflows
 - GStreamer tools (gst-launch-1.0) for multi-segment WebM concatenation
-- ComfyUI is optional and currently runs CPU-only on this PS5; it is not advertised as a Vulkan/PyTorch GPU backend
+- ComfyUI is optional; its active ROCm/HIP backend is validated for Krea 2 image workflows. This does not make ComfyUI a validated native video backend.
 - AMDGPU/RADV Vulkan device exposed by the PS5 Linux kernel
 
 The runtime paths are currently configured for the PS5 development environment. See docs/WEB_INTERFACE.md for implementation and API details.
@@ -93,7 +96,7 @@ Stable Diffusion 1.5 text-to-image and image-to-image/inpainting have passed rea
 
 Workflow Studio runs a local ComfyUI backend as a separate user service (`ps5-ai-studio-comfyui.service`). The ComfyUI checkout and Python environment live under `runtimes/` and are intentionally excluded from Git. Tracked integration files live in `apps/comfyui/` and `packaging/systemd/`.
 
-The current PS5 Oberon GPU is exposed through Vulkan but is not available to PyTorch as a supported ROCm/HIP device. ComfyUI therefore runs its workflow graph engine on CPU. The custom **PS5 AI Studio · Generate / Edit** node delegates image generation and editing to the existing stable-diffusion.cpp Vulkan runtime through the PS5 AI Studio API. Load a checkpoint in Image Studio before executing that node. ComfyUI shares the existing image model directories through `extra_model_paths.yaml`.
+The active `ps5-ai-studio-comfyui.service` uses the isolated `comfy-rocm-venv` and ROCm/HIP gfx1013 PyTorch build. Krea 2 image generation has completed on this backend; tested timing and memory limits are recorded in [the Krea 2 optimization results](docs/KREA2-OPTIMIZATION-RESULTS-20261104.md). The custom **PS5 AI Studio · Generate / Edit** bridge node still delegates supported image work to the native stable-diffusion.cpp Vulkan runtime through the Studio API. ComfyUI shares the existing image model directories through `extra_model_paths.yaml`. See [ROCm gfx1013 status](docs/ROCM_GFX1013.md).
 
 ComfyUI is bound to the PS5 Linux LAN address on port `8790`; the PS5 AI Studio web application remains on port `8787`. The ComfyUI backend is not exposed on the loopback-only interface, and its UI is embedded in the Workflow Studio section.
 
@@ -104,10 +107,13 @@ ComfyUI-Manager is enabled for curated registry custom nodes. Its tracked config
 Video Studio has two independent backends:
 
 - **Native PS5 AI Video Engine (preferred):** stable-diffusion.cpp with ggml-Vulkan/RADV, bound to 127.0.0.1:1235. It has a separate model library and currently includes the Wan 2.1 T2V 1.3B Q4 profile. Model loading is mutually exclusive with the text and image runtimes to respect the PS5 unified-memory budget.
-- **ComfyUI (optional):** import a ComfyUI API-format workflow. The current ComfyUI/PyTorch build runs on CPU; custom PS5 AI Studio bridge nodes can delegate supported image work to the native Vulkan image runtime.
+- **ComfyUI (optional):** import an API-format workflow. The active ROCm/HIP gfx1013 service has validated Krea 2 image workflows; native video generation remains on the separate Vulkan Video Engine. Custom PS5 AI Studio bridge nodes can delegate supported image work to the native Vulkan image runtime.
 
 The native engine has passed a real 1-second, 9-frame, 2-step Wan 2.1 Vulkan generation test. GStreamer WebM concatenation was tested separately. The UI accepts 1–60 second targets and splits native text-to-video into sequential segments of at most 81 frames each. A complete multi-segment generation has not yet been validated end-to-end, and independent T2V segments do not guarantee visual/action continuity. Long native image-to-video, frame chaining, audio, interpolation and video upscaling remain under development; do not interpret UI roadmap labels as validated capabilities. See docs/VIDEO_STUDIO.md.
 
 ## Civitai model repository
 
 The Model Shop can search Civitai alongside Hugging Face for image checkpoints and assets. Select **Civitai**, choose an image category, search, select a model, then choose a specific version/file to enqueue. Downloads use the existing resumable queue and are placed in the corresponding Linux model directory (never the native PS5 app directories). The API integration uses Civitai's public v1 model search endpoint and version download endpoint. An optional API token can be supplied to the server process as `CIVITAI_API_KEY` for gated or rate-limited access; it is never exposed to the browser.
+
+
+Krea 2 prompt optimization is documented in [Krea 2 Prompt Intelligence](docs/KREA2-PROMPT-INTELLIGENCE.md). The separate text/vision model roles and tested PS5 model router are documented in [Model Router](docs/MODEL-ROUTER.md). Configure the OpenRouter API key and optional preset slug under Settings; model selection and fallback routing remain managed by the OpenRouter preset.
