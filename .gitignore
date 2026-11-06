@@ -15,6 +15,10 @@ data/
 # Local ComfyUI checkout and isolated Python environment
 runtimes/
 
+# Local build artifacts and timestamped safety snapshots (kept out of Git)
+/build/
+*.pre-*
+
 # Python bytecode
 __pycache__/
 *.py[cod]

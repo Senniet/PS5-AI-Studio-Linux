@@ -46,7 +46,7 @@ De catalogusdownload haalt de volledige modelstack binnen. De UI markeert een pr
 
 De PS5 gebruikt AMD Custom Zen 2 / Oberon, geïdentificeerd als RADV GFX1013. Het is een unified-memory GPU. `mem_info_vram_total` toont slechts 512 MiB dedicated geheugen; `mem_info_gtt_total` is de gedeelde GPU-geheugenpool en wordt apart weergegeven.
 
-De native runtime start stable-diffusion.cpp met expliciete Vulkan-toewijzing voor diffusion, text encoder en VAE. Er is geen CPU-fallback in de native modelstart. De ComfyUI-installatie blijft momenteel CPU-only en start met `--cpu`; daarom wordt ComfyUI niet als GPU-backend gepresenteerd.
+De native runtime start stable-diffusion.cpp met expliciete Vulkan-toewijzing voor diffusion, text encoder en VAE. Er is geen CPU-fallback in de native modelstart. ComfyUI draait daarnaast via het actieve gfx1013 ROCm/HIP-profiel voor gevalideerde Krea 2-beeldgeneratie; native video gebruikt nog steeds de afzonderlijke Vulkan-engine. Zie [ROCm gfx1013-status](ROCM_GFX1013.md).
 
 Een compleet modelprofiel betekent nog niet automatisch dat iedere resolutie of framecount past. De beschikbare GTT-pool is beperkt. Begin met korte clips op lage resolutie en verhoog instellingen pas na een succesvolle meting. De Wan 2.2 5B stack is ongeveer 10.5 GB en wordt door de engine als te groot geblokkeerd op de huidige gemeten 7.05 GiB GTT-pool. Wan 2.1 gebruikt nu de gekalibreerde Q4_K_S GGUF-stack van ongeveer 4.7 GB; de engine markeert die als krappe geheugenmarge en begint met korte clips.
 
@@ -90,4 +90,18 @@ De server-, API-, modelcatalogus- en frontend-syntaxchecks slagen. Wan 2.1 T2V 1
 
 ## Explicit capability boundaries
 
-The native Wan 2.1 profile is text-to-video only. The API rejects image-to-video for this profile rather than pretending it is supported. Multi-segment T2V currently repeats the prompt with incremented seeds; it does not pass the previous segment's final frame into the next segment. This is concatenation, not temporal continuation. The current UI may expose roadmap labels for video-to-video, interpolation, upscaling and audio; those functions are not yet validated by the native engine. ComfyUI remains available for separately configured workflows, but its installed PyTorch build is CPU-only on the PS5.
+The native Wan 2.1 profile is text-to-video only. The API rejects image-to-video for this profile rather than pretending it is supported. Multi-segment T2V currently repeats the prompt with incremented seeds; it does not pass the previous segment's final frame into the next segment. This is concatenation, not temporal continuation. The current UI may expose roadmap labels for video-to-video, interpolation, upscaling and audio; those functions are not yet validated by the native engine. ComfyUI remains available for separately configured workflows and currently uses the active gfx1013 ROCm/HIP backend for tested Krea 2 image workflows. This does not validate the listed video roadmap features on ComfyUI; see [ROCm gfx1013 status](ROCM_GFX1013.md).
+
+## Video Studio 2.0: lokale verbetering en AI-upscaling
+
+De zelfstandige werkruimte **Video verbeteren** gebruikt de lokale FFmpeg/RIFE-pipeline en optioneel SeedVR2 via ComfyUI. Bronnen en exports staan apart; het origineel wordt nooit overschreven.
+
+- FFmpeg: trim, snelheid, rotatie, kleurcorrectie, ruisreductie, verscherping, stabilisatie, deinterlace en Lanczos-scaling.
+- RIFE v4.6: echte AI-frame-interpolatie via ncnn Vulkan op AMD Oberon.
+- SeedVR2 3B Q4: AI-videoherstel en -upscaling via PyTorch ROCm/HIP, BlockSwap 32, CPU-offload en VAE-tegels van 192 px (128 px bij lagere vrije GTT).
+- SeedVR2-uitvoer is op de PS5 begrensd op Full HD (1920 × 1080); QHD en 4K zijn geblokkeerd om geheugenproblemen te voorkomen.
+- SeedVR2 en RIFE zijn niet combineerbaar in één taak. ComfyUI moet idle zijn en andere AI-runtimes moeten ontladen zijn.
+- Het gemeten SeedVR2-testtempo was circa 0,21 fps op vijf synthetische frames van 320 × 180. Dit is zwaar en kan voor lange video's uren betekenen.
+- Audio wordt na AI-frameverwerking opnieuw gemuxed en behouden; de bronvideo blijft intact.
+
+Zie [SeedVR2 PS5-profiel](SEEDVR2_PS5.md) voor modelhashes, geheugengrenzen, installatie en testresultaten.

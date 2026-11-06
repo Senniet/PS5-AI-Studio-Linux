@@ -1,0 +1,16 @@
+import assert from "node:assert/strict";
+import {cacheValidated} from "../apps/server/gguf-validation-cache.mjs";
+const cache=new Map();let runs=0;
+const check=()=>cacheValidated(cache,"same-fingerprint",async()=>{runs++;await new Promise(r=>setTimeout(r,5));return"valid";});
+assert.deepEqual(await Promise.all([check(),check(),check()]),["valid","valid","valid"]);
+assert.equal(runs,1);
+assert.equal(await check(),"valid");assert.equal(runs,1);
+let failures=0;
+await assert.rejects(cacheValidated(cache,"bad",async()=>{failures++;throw Error("invalid");}),/invalid/);
+await assert.rejects(cacheValidated(cache,"bad",async()=>{failures++;throw Error("invalid");}),/invalid/);
+assert.equal(failures,2);
+const bounded=new Map(),work=async()=>true;
+await cacheValidated(bounded,"a",work,2);await cacheValidated(bounded,"b",work,2);
+await cacheValidated(bounded,"a",work,2);await cacheValidated(bounded,"c",work,2);
+assert.deepEqual([...bounded.keys()],["a","c"]);
+console.log("GGUF validation cache fixture: 7 assertions passed");
