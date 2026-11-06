@@ -31,9 +31,9 @@ const release = server.slice(server.indexOf('async function releaseComfyModels()
 ok(release.indexOf('const alreadyClear=') < release.indexOf('const response=await fetch(COMFY_BASE+"/free"'), 'ComfyUI idle-memory state must be checked before requesting an unload');
 ok(release.includes('if(alreadyClear)return{ok:true,accepted:true,confirmed:true'), 'already-free GPU must return immediately without the 20-second polling loop');
 ok(release.indexOf('if(!before.queueIdle)') < release.indexOf('if(alreadyClear)'), 'active ComfyUI queues must remain protected before the fast path');
-const textLoad = server.slice(server.indexOf('async function loadText(b)'), server.indexOf('async function loadImage(b)'));
-ok(textLoad.includes('await releaseComfyModels()'), 'text/vision loading must release ComfyUI model residency');
-ok(textLoad.indexOf('await releaseComfyModels()') < textLoad.indexOf('await stop(runtimes.text)'), 'ComfyUI memory must be released before the text/vision runtime starts');
+const textLoad = server.slice(server.indexOf('async function loadTextUnlocked(b)'), server.indexOf('async function loadImageUnlocked(b)'));
+ok(textLoad.includes('await prepareComfyForText()'), 'text/vision loading must safely prepare ComfyUI before starting');
+ok(textLoad.indexOf('await prepareComfyForText()') < textLoad.indexOf('await stop(runtimes.text)'), 'ComfyUI queue/model state must be cleared before the text/vision runtime starts');
 ok(app.includes('m.mmprojCandidates?.length?" · Vision":""'), 'model pickers must identify models with vision projectors');
 ok(html.includes('Tekst- of visionmodel<select id="chat-load-model-select">'), 'chat model picker must offer vision models');
 ok(html.includes('Afbeelding · visionmodel vereist'), 'chat image upload must communicate the vision requirement');
