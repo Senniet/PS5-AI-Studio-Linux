@@ -36,12 +36,13 @@ The current boot's service checks show both application services active. The ava
 ## Git and publication state at this snapshot
 
 - Local checkout: `/home/michel/PS5-AI-Studio-Linux`.
-- Local branch: `linux-main`; local HEAD at inspection: `b23128fc8b4481db3579c14f1702c867b1e9f519`.
-- The local history contains 147 commits from a local root commit that is not present in the GitHub repository.
-- GitHub currently has `main` and `feature/linux-web-dashboard`; there is no remote `linux-main` branch.
-- The local working tree has 12 modified tracked files and 298 untracked paths at inspection. Many untracked paths are timestamped `.pre-*` safety snapshots; they are not intended as normal Git source files.
-- `npm run check` passes. GitHub publication must use an explicit snapshot/branch strategy; do not force-push the unrelated local history over the existing GitHub branches.
+- Local branch: `linux-main`; the original inspection HEAD was `b23128fc8b4481db3579c14f1702c867b1e9f519`.
+- The local `linux-main` history contains 147 commits from a local root commit that is not part of GitHub's existing history. The local history was not force-pushed or rewritten.
+- The current working-tree snapshot was published through PR [#1](https://github.com/Senniet/PS5-AI-Studio-Linux/pull/1) and merged into GitHub `main` on 2026-11-06. Merge commit: `f93f26256bc38a59fada84c4c4a3f58d6ed6778f`.
+- The published snapshot contains 187 text/source/documentation files. Local timestamped `.pre-*` safety snapshots, runtime environments/model caches, build outputs, firmware binary blobs and binary license PDFs were intentionally kept out of GitHub; they remain in the local backup archive.
+- Validation after the sync: `npm run check`, `git diff --check`, all 13 `scripts/test-*.mjs` tests, and shell syntax checks passed. Two stale tests were aligned with the current ComfyUI model-release flow and prompt-safety rules.
+- The ZIP backup preserves the local `.git` directory and its 147-commit history; this history remains distinct from the GitHub `main` history.
 
 ## Backup scope
 
-The project archive should preserve the local Git history and current working tree, including uncommitted source and documentation. Runtime environments, model assets and generated outputs are kept as local runtime state and may make the archive substantially larger; list any exclusions explicitly in the archive manifest. Never include API keys, credentials, `.env` files or private SSH material.
+The project archive includes the full project directory, local `.git` history, current working tree, timestamped safety snapshots, runtime checkouts/environments, bundled ComfyUI model assets and build outputs. It excludes credentials and private key material, cache/bytecode directories and logs. The separate user model/data/config directories under `~/.local/share/ps5-ai-studio` and `~/.config/ps5-ai-studio-linux` are outside the project and are not part of this archive. Never include API keys, credentials, `.env` files or private SSH material.
